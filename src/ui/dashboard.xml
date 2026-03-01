@@ -1,0 +1,149 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+    <!-- Entry Template -->
+    <Button name="ProfitCraftEntryTemplate" virtual="true">
+        <Size>
+            <AbsDimension x="500" y="24"/>
+        </Size>
+        <Layers>
+            <Layer level="BORDER">
+                <FontString name="$parentName" inherits="GameFontNormal" justifyH="LEFT" text="">
+                    <Size>
+                        <AbsDimension x="300" y="24"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="LEFT">
+                            <Offset>
+                                <AbsDimension x="5" y="0"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </FontString>
+                <FontString name="$parentProfit" inherits="GameFontHighlight" justifyH="RIGHT" text="">
+                    <Size>
+                        <AbsDimension x="150" y="24"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="RIGHT">
+                            <Offset>
+                                <AbsDimension x="-5" y="0"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+        <!-- A simple highlight on hover -->
+        <HighlightTexture file="Interface\QuestFrame\UI-QuestTitleHighlight" alphaMode="ADD"/>
+    </Button>
+
+    <!-- Main Dashboard Frame -->
+    <Frame name="ProfitCraftDashboard" parent="UIParent" hidden="true" toplevel="true" enableMouse="true" movable="true">
+        <Size>
+            <AbsDimension x="600" y="450" />
+        </Size>
+        <Anchors>
+            <Anchor point="CENTER" />
+        </Anchors>
+        <Backdrop bgFile="Interface\DialogFrame\UI-DialogBox-Background" edgeFile="Interface\DialogFrame\UI-DialogBox-Border" tile="true">
+            <BackgroundInsets>
+                <AbsInset left="11" right="12" top="12" bottom="11" />
+            </BackgroundInsets>
+            <TileSize>
+                <AbsValue val="32" />
+            </TileSize>
+            <EdgeSize>
+                <AbsValue val="32" />
+            </EdgeSize>
+        </Backdrop>
+
+        <!-- Header -->
+        <Layers>
+            <Layer level="ARTWORK">
+                <Texture name="$parentHeader" file="Interface\DialogFrame\UI-DialogBox-Header">
+                    <Size>
+                        <AbsDimension x="256" y="64" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOP">
+                            <Offset>
+                                <AbsDimension x="0" y="12" />
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </Texture>
+                <FontString name="$parentTitleText" inherits="GameFontNormal" text="ProfitCraft Dashboard">
+                    <Anchors>
+                        <Anchor point="TOP" relativeTo="$parentHeader">
+                            <Offset>
+                                <AbsDimension x="0" y="-14" />
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+
+        <Frames>
+            <!-- Close Button -->
+            <Button name="$parentCloseButton" inherits="UIPanelCloseButton">
+                <Anchors>
+                    <Anchor point="TOPRIGHT">
+                        <Offset>
+                            <AbsDimension x="-3" y="-3" />
+                        </Anchor>
+                    </Anchor>
+                </Anchors>
+            </Button>
+            
+            <!-- List Scroll Frame will go here -->
+            <ScrollFrame name="$parentScrollFrame" inherits="FauxScrollFrameTemplate">
+                <Size>
+                    <AbsDimension x="550" y="320"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPLEFT">
+                        <Offset>
+                            <AbsDimension x="20" y="-50"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnVerticalScroll>
+                        FauxScrollFrame_OnVerticalScroll(50, ProfitCraft_DashboardUpdate);
+                    </OnVerticalScroll>
+                </Scripts>
+            </ScrollFrame>
+            
+            <!-- Shopping List / Reagent Tracker UI will go below -->
+            <Frame name="$parentTracker" inherits="OptionFrameBoxTemplate">
+                <Size>
+                    <AbsDimension x="550" y="50" />
+                </Size>
+                <Anchors>
+                    <Anchor point="BOTTOM">
+                        <Offset>
+                            <AbsDimension x="0" y="15" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </Frame>
+        </Frames>
+
+        <!-- Scripts -->
+        <Scripts>
+            <OnLoad>
+                this:RegisterForDrag("LeftButton");
+                ProfitCraft_Dashboard_OnLoad(this);
+            </OnLoad>
+            <OnDragStart>
+                this:StartMoving();
+            </OnDragStart>
+            <OnDragStop>
+                this:StopMovingOrSizing();
+            </OnDragStop>
+            <OnHide>
+                this:StopMovingOrSizing();
+            </OnHide>
+        </Scripts>
+    </Frame>
+</Ui>
