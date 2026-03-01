@@ -67,6 +67,8 @@ local TRACKED_PROFESSIONS = {
     ["Tailoring"] = true,
 }
 
+local GetAuxMarketValue
+
 local function NormalizeRecipeName(name)
     if not name then return nil end
     return string.lower(name)
@@ -109,6 +111,8 @@ local function EnsureCharacterData()
             knownRecipes = {},
             trainerRecipes = {},
             discoveredRecipes = {},
+            learnedRecipes = {},
+            shoppingList = {},
         }
     end
 
@@ -117,6 +121,8 @@ local function EnsureCharacterData()
     if not data.knownRecipes then data.knownRecipes = {} end
     if not data.trainerRecipes then data.trainerRecipes = {} end
     if not data.discoveredRecipes then data.discoveredRecipes = {} end
+    if not data.learnedRecipes then data.learnedRecipes = {} end
+    if not data.shoppingList then data.shoppingList = {} end
 
     return data
 end
@@ -124,6 +130,107 @@ end
 function ProfitCraft_GetStoredProfessions()
     local data = EnsureCharacterData()
     return data.professions
+end
+
+local function ClampShoppingQty(qty)
+    qty = tonumber(qty) or 1
+    if qty < 1 then return 1 end
+    if qty > 99 then return 99 end
+    return qty
+end
+
+local function CloneRecipeSnapshot(recipe)
+    if not recipe or not recipe.name then
+        return nil
+    end
+
+    local snapshot = {
+        name = recipe.name,
+        itemLink = recipe.itemLink,
+        marketValue = recipe.marketValue or 0,
+        cost = recipe.cost or 0,
+        profit = recipe.profit or 0,
+        isLearned = recipe.isLearned and true or false,
+        source = recipe.source,
+        sourceDetails = recipe.sourceDetails,
+        skillType = recipe.skillType,
+        profession = recipe.profession,
+        reagents = {},
+    }
+
+    if recipe.reagents then
+        for _, reagent in ipairs(recipe.reagents) do
+            table.insert(snapshot.reagents, {
+                name = reagent.name or "Unknown",
+                count = reagent.count or 0,
+                playerCount = reagent.playerCount or 0,
+                unitCost = reagent.unitCost or 0,
+                link = reagent.link,
+            })
+        end
+    end
+
+    return snapshot
+end
+
+function ProfitCraft_SaveShoppingList(entries)
+    local data = EnsureCharacterData()
+    data.shoppingList = {}
+
+    if not entries then
+        return
+    end
+
+    for _, entry in ipairs(entries) do
+        local recipe = entry.recipe
+        local recipeName = nil
+        local professionName = nil
+
+        if recipe and recipe.name then
+            recipeName = recipe.name
+            professionName = recipe.profession
+        elseif entry.recipeName then
+            recipeName = entry.recipeName
+            professionName = entry.profession
+        end
+
+        if recipeName then
+            table.insert(data.shoppingList, {
+                qty = ClampShoppingQty(entry.qty),
+                recipeName = recipeName,
+                profession = professionName,
+                recipe = CloneRecipeSnapshot(recipe),
+            })
+        end
+    end
+end
+
+function ProfitCraft_LoadShoppingList()
+    local data = EnsureCharacterData()
+    local restored = {}
+
+    for _, entry in ipairs(data.shoppingList) do
+        local recipeSnapshot = nil
+        local recipeName = entry.recipeName
+        local professionName = entry.profession
+
+        if entry.recipe and entry.recipe.name then
+            recipeSnapshot = CloneRecipeSnapshot(entry.recipe)
+            recipeName = recipeSnapshot.name
+            professionName = recipeSnapshot.profession or professionName
+        end
+
+        if recipeName then
+            table.insert(restored, {
+                qty = ClampShoppingQty(entry.qty),
+                recipeName = recipeName,
+                profession = professionName,
+                recipe = recipeSnapshot,
+            })
+        end
+    end
+
+    return restored
 end
 
 local function IsTrackedProfession(skillName)
@@ -472,6 +579,98 @@ local function IsRecipeKnown(profession, recipeName, liveLearnedLookup)
     return false
 end
 
+local function StoreLearnedRecipeCacheForProfession(professionName, learnedRecipes)
+    if not IsTrackedProfession(professionName) then return end
+
+    local data = EnsureCharacterData()
+    data.learnedRecipes[professionName] = {}
+
+    if not learnedRecipes then
+        return
+    end
+
+    local byProfession = data.learnedRecipes[professionName]
+    local now = (GetTime and GetTime()) or 0
+
+    for _, recipe in ipairs(learnedRecipes) do
+        if recipe and recipe.name then
+            local recipeKey = NormalizeRecipeName(recipe.name)
+            if recipeKey then
+                local snapshot = CloneRecipeSnapshot(recipe)
+                if snapshot then
+                    snapshot.lastSeen = now
+                    byProfession[recipeKey] = snapshot
+                end
+            end
+        end
+    end
+end
+
+local function GetCachedLearnedRecipesForProfession(professionName)
+    local data = EnsureCharacterData()
+    local byProfession = data.learnedRecipes[professionName]
+    if not byProfession then
+        return nil
+    end
+
+    local available = {}
+    for _, recipe in pairs(byProfession) do
+        if recipe and recipe.name then
+            local itemValue = recipe.marketValue or 0
+            if recipe.itemLink then
+                local liveValue = GetAuxMarketValue(recipe.itemLink)
+                if liveValue and liveValue > 0 then
+                    itemValue = liveValue
+                end
+            end
+
+            local totalReagentCost = 0
+            local reagents = {}
+            if recipe.reagents then
+                for _, reagent in ipairs(recipe.reagents) do
+                    local count = reagent.count or 0
+                    local unitCost = reagent.unitCost or 0
+                    if reagent.link then
+                        local liveUnitCost = GetAuxMarketValue(reagent.link)
+                        if liveUnitCost and liveUnitCost > 0 then
+                            unitCost = liveUnitCost
+                        end
+                    end
+
+                    totalReagentCost = totalReagentCost + (unitCost * count)
+                    table.insert(reagents, {
+                        name = reagent.name or "Unknown",
+                        count = count,
+                        playerCount = 0,
+                        unitCost = unitCost,
+                        link = reagent.link,
+                    })
+                end
+            end
+
+            if totalReagentCost <= 0 and recipe.cost and recipe.cost > 0 then
+                totalReagentCost = recipe.cost
+            end
+
+            table.insert(available, {
+                name = recipe.name,
+                itemLink = recipe.itemLink,
+                marketValue = itemValue,
+                cost = totalReagentCost,
+                profit = itemValue - totalReagentCost,
+                isLearned = true,
+                source = "Learned",
+                sourceDetails = nil,
+                reagents = reagents,
+                skillType = recipe.skillType,
+                profession = professionName,
+            })
+        end
+    end
+
+    return available
+end
+
 local function GetStoredProfessionOrder()
     local ordered = {}
     local professions = ProfitCraft_GetStoredProfessions()
@@ -520,7 +719,7 @@ local function InitAuxAPI()
     return false
 end
 
-local function GetAuxMarketValue(itemLink)
+GetAuxMarketValue = function(itemLink)
     if not hasAux or not itemLink then return 0 end
 
     local _, _, itemId = string.find(itemLink, "item:(%d+):")
@@ -620,6 +819,7 @@ frame:SetScript("OnEvent", function()
         end
         ProfitCraft_EnsureSettings()
         EnsureCharacterData()
+        ProfitCraft_ShoppingList = ProfitCraft_LoadShoppingList()
         ProfitCraft_RefreshProfessionSnapshot()
         ProfitCraft_CacheBagRecipeItems()
 
@@ -716,10 +916,15 @@ SlashCmdList["PROFITCRAFT"] = function(msg)
         ProfitCraft_CalculateProfits()
         Print("Rescanned profession and recipe sources.")
     elseif msg == "clear" then
-        ProfitCraft_ShoppingList = {}
-        ProfitCraft_UpdateTracker()
-        if ProfitCraft_ApplySortAndFilter then ProfitCraft_ApplySortAndFilter() end
-        if ProfitCraft_DashboardUpdate then ProfitCraft_DashboardUpdate() end
+        if ProfitCraft_ClearShoppingList then
+            ProfitCraft_ClearShoppingList()
+        else
+            ProfitCraft_ShoppingList = {}
+            ProfitCraft_SaveShoppingList(ProfitCraft_ShoppingList)
+            ProfitCraft_UpdateTracker()
+            if ProfitCraft_ApplySortAndFilter then ProfitCraft_ApplySortAndFilter() end
+            if ProfitCraft_DashboardUpdate then ProfitCraft_DashboardUpdate() end
+        end
         Print("Shopping list cleared.")
     else
         ProfitCraft_ToggleDashboard()
@@ -729,6 +934,33 @@ end
 -- ============================================================================
 -- Core Profit Calculation
 -- ============================================================================
+
+local function BuildRecipeDedupeKey(professionName, recipeName, fallbackID)
+    local normalized = NormalizeRecipeName(recipeName)
+    if normalized then
+        return professionName .. ":" .. normalized
+    end
+    return professionName .. ":" .. tostring(fallbackID or "unknown")
+end
+
+local function AppendCachedLearnedRecipesForProfession(professionName, dedupeLookup)
+    local cachedLearned = GetCachedLearnedRecipesForProfession(professionName)
+    if not cachedLearned then
+        return 0
+    end
+
+    local added = 0
+    for _, recipe in ipairs(cachedLearned) do
+        local dedupeKey = BuildRecipeDedupeKey(professionName, recipe.name, recipe.id)
+        if dedupeKey and not dedupeLookup[dedupeKey] then
+            table.insert(ProfitCraft_List, recipe)
+            dedupeLookup[dedupeKey] = true
+            added = added + 1
+        end
+    end
+
+    return added
+end
 
 local function AppendUnlearnedRecipesForProfession(professionName, professionRank, activeProfession, activeLearnedLookup, dedupeLookup)
     if not professionName or not professionRank or professionRank <= 0 then
@@ -743,7 +975,7 @@ local function AppendUnlearnedRecipesForProfession(professionName, professionRan
         end
 
         local recipeKey = NormalizeRecipeName(recipe.name)
-        local dedupeKey = professionName .. ":" .. (recipeKey or tostring(recipe.id or "unknown"))
+        local dedupeKey = BuildRecipeDedupeKey(professionName, recipe.name, recipe.id)
         if recipeKey and not dedupeLookup[dedupeKey] then
             local liveLookup = nil
             if activeProfession and activeProfession == professionName then
@@ -807,6 +1039,8 @@ function ProfitCraft_CalculateProfits(silent, shouldShowDashboard)
 
     ProfitCraft_List = {}
     local learnedRecipeLookup = {}
+    local learnedDedupeLookup = {}
+    local scannedLearnedRecipes = {}
 
     if hasOpenTradeSkill then
         StoreProfessionState(skillName, skillRank, skillMaxRank)
@@ -853,7 +1087,7 @@ function ProfitCraft_CalculateProfits(silent, shouldShowDashboard)
 
                 local profit = itemValue - totalReagentCost
 
-                table.insert(ProfitCraft_List, {
+                local learnedEntry = {
                     name = name,
                     itemLink = itemLink,
                     marketValue = itemValue,
@@ -865,18 +1099,37 @@ function ProfitCraft_CalculateProfits(silent, shouldShowDashboard)
                     reagents = reagents,
                     skillType = skillType,
                     profession = skillName,
-                })
+                }
+
+                table.insert(ProfitCraft_List, learnedEntry)
+                table.insert(scannedLearnedRecipes, learnedEntry)
+
+                local learnedDedupeKey = BuildRecipeDedupeKey(skillName, name)
+                if learnedDedupeKey then
+                    learnedDedupeLookup[learnedDedupeKey] = true
+                end
             end
         end
 
         StoreKnownRecipesForProfession(skillName, learnedRecipeLookup)
+        StoreLearnedRecipeCacheForProfession(skillName, scannedLearnedRecipes)
     end
 
-    -- Pass 2: Unlearned recipes from all stored professions.
-    local unlearnedCount = 0
-    local dedupeLookup = {}
+    -- Pass 2: Cached learned recipes from all stored professions.
     local storedProfessions = ProfitCraft_GetStoredProfessions()
     local professionOrder = GetStoredProfessionOrder()
+    for _, professionName in ipairs(professionOrder) do
+        if not (hasOpenTradeSkill and professionName == skillName) then
+            AppendCachedLearnedRecipesForProfession(professionName, learnedDedupeLookup)
+        end
+    end
+
+    -- Pass 3: Unlearned recipes from all stored professions.
+    local unlearnedCount = 0
+    local dedupeLookup = {}
+    for dedupeKey in pairs(learnedDedupeLookup) do
+        dedupeLookup[dedupeKey] = true
+    end
     for _, professionName in ipairs(professionOrder) do
         local storedProfession = storedProfessions[professionName]
         local storedRank = storedProfession and storedProfession.rank or 0

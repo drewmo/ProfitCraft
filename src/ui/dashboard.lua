@@ -5,8 +5,8 @@
 -- State
 -- ============================================================================
 
-ProfitCraft_List = {}
-ProfitCraft_FilteredList = {}
+ProfitCraft_List = ProfitCraft_List or {}
+ProfitCraft_FilteredList = ProfitCraft_FilteredList or {}
 
 ProfitCraft_SortField = "profit"
 ProfitCraft_SortAscending = false
@@ -22,12 +22,27 @@ ProfitCraft_Filters = {
 }
 
 -- Multi-item shopping list: { {recipe=<data>, qty=1}, ... }
-ProfitCraft_ShoppingList = {}
+ProfitCraft_ShoppingList = ProfitCraft_ShoppingList or {}
 ProfitCraft_ShoppingListMax = 4
 
 local NUM_DISPLAY_ROWS = 11
 local TRACKER_ROW_HEIGHT = 18
 local TRACKER_DISPLAY_ROWS = 10
+
+local PROFESSION_SHORT_NAMES = {
+    ["Alchemy"] = "Alch",
+    ["Blacksmithing"] = "BS",
+    ["Cooking"] = "Cook",
+    ["Enchanting"] = "Ench",
+    ["Engineering"] = "Eng",
+    ["First Aid"] = "FA",
+    ["Fishing"] = "Fish",
+    ["Herbalism"] = "Herb",
+    ["Leatherworking"] = "LW",
+    ["Mining"] = "Mine",
+    ["Skinning"] = "Skin",
+    ["Tailoring"] = "Tail",
+}
 
 local function GetSettingValue(key, defaultValue)
     if ProfitCraft_GetSetting then
@@ -129,11 +144,67 @@ end
 
 local function BuildRecipeLookupKey(recipe)
     if not recipe or not recipe.name then return nil end
+
     local profession = ""
     if recipe.profession then
         profession = string.lower(recipe.profession)
     end
     return profession .. "\001" .. string.lower(recipe.name)
+end
+
+local function BuildRecipeLookupKeyFromParts(recipeName, profession)
+    if not recipeName then return nil end
+    local normalizedProfession = ""
+    if profession then
+        normalizedProfession = string.lower(profession)
+    end
+    return normalizedProfession .. "\001" .. string.lower(recipeName)
+end
+
+local function GetShoppingEntryLookupKey(entry)
+    if not entry then return nil end
+
+    if entry.recipe and entry.recipe.name then
+        return BuildRecipeLookupKey(entry.recipe)
+    end
+
+    if entry.recipeName then
+        return BuildRecipeLookupKeyFromParts(entry.recipeName, entry.profession)
+    end
+
+    return nil
+end
+
+local function GetProfessionShortName(profession)
+    if not profession or profession == "" then
+        return nil
+    end
+
+    if PROFESSION_SHORT_NAMES[profession] then
+        return PROFESSION_SHORT_NAMES[profession]
+    end
+
+    return string.sub(profession, 1, 4)
+end
+
+local function GetRecipeDisplayName(recipeName, profession, dimName)
+    local safeName = recipeName or "Unknown Recipe"
+    if dimName then
+        safeName = "|cFFAAAAAA" .. safeName .. "|r"
+    end
+
+    local shortProfession = GetProfessionShortName(profession)
+    if not shortProfession then
+        return safeName
+    end
+
+    return safeName .. " |cFF777777[" .. shortProfession .. "]|r"
+end
+
+local function PersistShoppingList()
+    if ProfitCraft_SaveShoppingList then
+        ProfitCraft_SaveShoppingList(ProfitCraft_ShoppingList)
+    end
 end
 
 local function SetCheckboxLabel(frameName, labelText, width)
@@ -424,6 +495,15 @@ function ProfitCraft_Dashboard_OnLoad(frame)
 
         row:Hide()
     end
+
+    if ProfitCraft_LoadShoppingList then
+        ProfitCraft_ShoppingList = ProfitCraft_LoadShoppingList()
+    end
+
+    if ProfitCraft_SyncShoppingListRecipes then
+        ProfitCraft_SyncShoppingListRecipes()
+    end
+    ProfitCraft_UpdateTracker()
 end
 
 -- ============================================================================
@@ -510,8 +590,9 @@ function ProfitCraft_ApplySortAndFilter()
     if ProfitCraft_Filters.showShoppingOnly then
         shoppingOnlyMap = {}
         for _, shoppingEntry in ipairs(ProfitCraft_ShoppingList) do
-            if shoppingEntry.recipe and shoppingEntry.recipe.name then
-                shoppingOnlyMap[string.lower(shoppingEntry.recipe.name)] = true
+            local shoppingKey = GetShoppingEntryLookupKey(shoppingEntry)
+            if shoppingKey then
+                shoppingOnlyMap[shoppingKey] = true
             end
         end
     end
@@ -539,8 +620,8 @@ function ProfitCraft_ApplySortAndFilter()
         end
 
         if dominated and shoppingOnlyMap then
-            local entryName = entry.name and string.lower(entry.name) or ""
-            if entryName == "" or not shoppingOnlyMap[entryName] then
+            local entryKey = BuildRecipeLookupKey(entry)
+            if not entryKey or not shoppingOnlyMap[entryKey] then
                 dominated = false
             end
         end
@@ -581,11 +662,7 @@ function ProfitCraft_DashboardUpdate()
 
                 -- Name (dimmed for unlearned)
                 local nameText = getglobal("ProfitCraftDashboardEntry"..i.."Name")
-                if data.isLearned then
-                    nameText:SetText(data.name)
-                else
-                    nameText:SetText("|cFFAAAAAA" .. data.name .. "|r")
-                end
+                nameText:SetText(GetRecipeDisplayName(data.name, data.profession, not data.isLearned))
 
                 -- Columns
                 getglobal("ProfitCraftDashboardEntry"..i.."Cost"):SetText(ProfitCraft_FormatCurrencyNeutral(data.cost))
@@ -596,8 +673,10 @@ function ProfitCraft_DashboardUpdate()
 
                 -- Highlight items in shopping list
                 local inList = false
+                local dataKey = BuildRecipeLookupKey(data)
                 for _, entry in ipairs(ProfitCraft_ShoppingList) do
-                    if entry.recipe and entry.recipe.name == data.name then
+                    local shoppingKey = GetShoppingEntryLookupKey(entry)
+                    if dataKey and shoppingKey and shoppingKey == dataKey then
                         inList = true
                         break
                     end
@@ -625,12 +704,19 @@ function ProfitCraft_OnEntryClick(btn)
     local data = ProfitCraft_FilteredList[btn.dataIndex]
     if not data then return end
 
+    local targetKey = BuildRecipeLookupKey(data)
+
     -- Check if already in the shopping list
     for _, entry in ipairs(ProfitCraft_ShoppingList) do
-        if entry.recipe and entry.recipe.name == data.name then
+        local entryKey = GetShoppingEntryLookupKey(entry)
+        if targetKey and entryKey and targetKey == entryKey then
             -- Increment quantity instead of adding a duplicate
             entry.qty = entry.qty + 1
             if entry.qty > 99 then entry.qty = 99 end
+            entry.recipe = data
+            entry.recipeName = data.name
+            entry.profession = data.profession
+            PersistShoppingList()
             ProfitCraft_UpdateTracker()
             ProfitCraft_ApplySortAndFilter()
             ProfitCraft_DashboardUpdate()
@@ -646,9 +732,12 @@ function ProfitCraft_OnEntryClick(btn)
 
     table.insert(ProfitCraft_ShoppingList, {
         recipe = data,
+        recipeName = data.name,
+        profession = data.profession,
         qty = 1,
     })
 
+    PersistShoppingList()
     ProfitCraft_UpdateTracker()
     ProfitCraft_ApplySortAndFilter()
     ProfitCraft_DashboardUpdate()
@@ -707,6 +796,7 @@ end
 function ProfitCraft_RemoveFromShoppingList(index)
     if ProfitCraft_ShoppingList[index] then
         table.remove(ProfitCraft_ShoppingList, index)
+        PersistShoppingList()
         ProfitCraft_UpdateTracker()
         ProfitCraft_ApplySortAndFilter()
         ProfitCraft_DashboardUpdate()
@@ -725,6 +815,15 @@ function ProfitCraft_AdjustShoppingListQty(index, delta)
 
     entry.qty = ClampShoppingQty((entry.qty or 1) + (delta or 0))
 
+    PersistShoppingList()
+    ProfitCraft_UpdateTracker()
+    ProfitCraft_ApplySortAndFilter()
+    ProfitCraft_DashboardUpdate()
+end
+
+function ProfitCraft_ClearShoppingList()
+    ProfitCraft_ShoppingList = {}
+    PersistShoppingList()
     ProfitCraft_UpdateTracker()
     ProfitCraft_ApplySortAndFilter()
     ProfitCraft_DashboardUpdate()
@@ -748,13 +847,20 @@ function ProfitCraft_SyncShoppingListRecipes()
     end
 
     for _, shoppingEntry in ipairs(ProfitCraft_ShoppingList) do
-        if shoppingEntry.recipe then
-            local key = BuildRecipeLookupKey(shoppingEntry.recipe)
-            if key and lookup[key] then
-                shoppingEntry.recipe = lookup[key]
+        local key = GetShoppingEntryLookupKey(shoppingEntry)
+        if key and lookup[key] then
+            shoppingEntry.recipe = lookup[key]
+            shoppingEntry.recipeName = shoppingEntry.recipe.name
+            shoppingEntry.profession = shoppingEntry.recipe.profession
+        elseif shoppingEntry.recipe and shoppingEntry.recipe.name then
+            shoppingEntry.recipeName = shoppingEntry.recipe.name
+            if not shoppingEntry.profession then
+                shoppingEntry.profession = shoppingEntry.recipe.profession
             end
         end
     end
+
+    PersistShoppingList()
 end
 
 function ProfitCraft_UpdateTracker()
@@ -773,14 +879,24 @@ function ProfitCraft_UpdateTracker()
         })
     else
         for recipeIndex, entry in ipairs(ProfitCraft_ShoppingList) do
-            local recipeName = "Unknown Recipe"
+            local recipeName = entry.recipeName or "Unknown Recipe"
+            local professionName = entry.profession
             if entry.recipe and entry.recipe.name then
                 recipeName = entry.recipe.name
+                if entry.recipe.profession then
+                    professionName = entry.recipe.profession
+                end
+            end
+
+            local professionSuffix = ""
+            local shortProfession = GetProfessionShortName(professionName)
+            if shortProfession then
+                professionSuffix = " |cFF777777[" .. shortProfession .. "]|r"
             end
 
             table.insert(rows, {
                 type = "recipe",
-                text = "|cFFFFD100" .. recipeName .. "|r  |cFFFFFFFFx" .. entry.qty .. "|r",
+                text = "|cFFFFD100" .. recipeName .. "|r" .. professionSuffix .. "  |cFFFFFFFFx" .. entry.qty .. "|r",
                 recipeIndex = recipeIndex,
             })
 
