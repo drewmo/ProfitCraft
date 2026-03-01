@@ -88,6 +88,42 @@ local function ConfigureStaticCheckboxLabels()
     SetCheckboxLabel("ProfitCraftSettingAutoShoppingOnly", "Use Shopping-Only on Auto Open", 210)
 end
 
+local function EnsureSettingsPanelOnTop()
+    if not ProfitCraftSettingsPanel then return end
+
+    local baseLevel = 200
+    if ProfitCraftDashboard then
+        baseLevel = ProfitCraftDashboard:GetFrameLevel() + 200
+    end
+
+    ProfitCraftSettingsPanel:SetFrameStrata("DIALOG")
+    ProfitCraftSettingsPanel:SetFrameLevel(baseLevel)
+    ProfitCraftSettingsPanel:EnableMouse(true)
+
+    if ProfitCraftSettingsPanel.SetBackdropColor then
+        ProfitCraftSettingsPanel:SetBackdropColor(0.06, 0.06, 0.06, 0.92)
+        ProfitCraftSettingsPanel:SetBackdropBorderColor(0.75, 0.75, 0.75, 1.0)
+    end
+
+    local checkboxes = {
+        "ProfitCraftSettingShowQuest",
+        "ProfitCraftSettingShowTrainer",
+        "ProfitCraftSettingShowVendor",
+        "ProfitCraftSettingShowDrop",
+        "ProfitCraftSettingAutoMerchant",
+        "ProfitCraftSettingAutoAuction",
+        "ProfitCraftSettingAutoShoppingOnly",
+    }
+
+    for _, checkboxName in ipairs(checkboxes) do
+        local cb = getglobal(checkboxName)
+        if cb then
+            cb:SetFrameStrata("DIALOG")
+            cb:SetFrameLevel(baseLevel + 5)
+        end
+    end
+end
+
 -- ============================================================================
 -- Currency Formatting
 -- ============================================================================
@@ -167,10 +203,8 @@ function ProfitCraft_ToggleSettings()
     if ProfitCraftSettingsPanel:IsVisible() then
         ProfitCraftSettingsPanel:Hide()
     else
+        EnsureSettingsPanelOnTop()
         ProfitCraft_RefreshSettingsUI()
-        if ProfitCraftDashboard then
-            ProfitCraftSettingsPanel:SetFrameLevel(ProfitCraftDashboard:GetFrameLevel() + 10)
-        end
         ProfitCraftSettingsPanel:Show()
     end
 end
@@ -240,6 +274,7 @@ function ProfitCraft_Dashboard_OnLoad(frame)
     if ProfitCraftSettingsPanel then
         ProfitCraftSettingsPanel:Hide()
     end
+    EnsureSettingsPanelOnTop()
     ConfigureStaticCheckboxLabels()
     ProfitCraft_RefreshSettingsUI()
 

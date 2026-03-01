@@ -162,7 +162,7 @@
                 </Scripts>
             </Button>
 
-            <Frame name="ProfitCraftSettingsPanel" hidden="true" enableMouse="true">
+            <Frame name="ProfitCraftSettingsPanel" hidden="true" enableMouse="true" toplevel="true" frameStrata="DIALOG">
                 <Size>
                     <AbsDimension x="250" y="176"/>
                 </Size>
@@ -183,6 +183,8 @@
                     <EdgeSize>
                         <AbsValue val="12"/>
                     </EdgeSize>
+                    <BackdropColor r="0.06" g="0.06" b="0.06" a="0.92"/>
+                    <BackdropBorderColor r="0.75" g="0.75" b="0.75" a="1.0"/>
                 </Backdrop>
                 <Layers>
                     <Layer level="OVERLAY">
