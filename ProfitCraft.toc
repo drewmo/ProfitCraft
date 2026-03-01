@@ -6,7 +6,8 @@
 ## OptionalDeps: aux-addon
 ## SavedVariables: ProfitCraftDB
 
-src/core/main.lua
-src/data/recipes.lua
-src/ui/dashboard.lua
-src/ui/dashboard.xml
+src\core\main.lua
+src\data\recipes.lua
+src\ui\dashboard.lua
+src\ui\dashboard.xml
+
