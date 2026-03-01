@@ -26,7 +26,8 @@ ProfitCraft_ShoppingList = {}
 ProfitCraft_ShoppingListMax = 4
 
 local NUM_DISPLAY_ROWS = 11
-local REAGENT_DISPLAY_LINES = 12
+local TRACKER_ROW_HEIGHT = 18
+local TRACKER_DISPLAY_ROWS = 10
 
 local function GetSettingValue(key, defaultValue)
     if ProfitCraft_GetSetting then
@@ -56,6 +57,83 @@ local function GetSourceStatusToken(source)
     else
         return "|cFFFF8800?|r"
     end
+end
+
+local function GetItemIDFromLink(itemLink)
+    if not itemLink then return nil end
+    local _, _, itemId = string.find(itemLink, "item:(%d+):")
+    if not itemId then return nil end
+    return tonumber(itemId)
+end
+
+local function GetItemNameFromLink(itemLink)
+    if not itemLink then return nil end
+    local _, _, itemName = string.find(itemLink, "%[(.+)%]")
+    return itemName
+end
+
+local function BuildCurrentBagCounts()
+    local countsByID = {}
+    local countsByName = {}
+
+    if not GetContainerNumSlots or not GetContainerItemLink then
+        return countsByID, countsByName
+    end
+
+    for bag = 0, 4 do
+        local numSlots = GetContainerNumSlots(bag)
+        if numSlots and numSlots > 0 then
+            for slot = 1, numSlots do
+                local itemLink = GetContainerItemLink(bag, slot)
+                if itemLink then
+                    local _, itemCount = GetContainerItemInfo(bag, slot)
+                    if not itemCount or itemCount < 1 then itemCount = 1 end
+
+                    local itemId = GetItemIDFromLink(itemLink)
+                    if itemId then
+                        countsByID[itemId] = (countsByID[itemId] or 0) + itemCount
+                    end
+
+                    local itemName = GetItemNameFromLink(itemLink)
+                    if itemName then
+                        local key = string.lower(itemName)
+                        countsByName[key] = (countsByName[key] or 0) + itemCount
+                    end
+                end
+            end
+        end
+    end
+
+    return countsByID, countsByName
+end
+
+local function GetCurrentReagentHaveCount(reagent, countsByID, countsByName)
+    if not reagent then return 0 end
+
+    if reagent.link then
+        local reagentID = GetItemIDFromLink(reagent.link)
+        if reagentID and countsByID[reagentID] then
+            return countsByID[reagentID]
+        end
+    end
+
+    if reagent.name then
+        local key = string.lower(reagent.name)
+        if countsByName[key] then
+            return countsByName[key]
+        end
+    end
+
+    return reagent.playerCount or 0
+end
+
+local function BuildRecipeLookupKey(recipe)
+    if not recipe or not recipe.name then return nil end
+    local profession = ""
+    if recipe.profession then
+        profession = string.lower(recipe.profession)
+    end
+    return profession .. "\001" .. string.lower(recipe.name)
 end
 
 local function SetCheckboxLabel(frameName, labelText, width)
@@ -279,95 +357,72 @@ function ProfitCraft_Dashboard_OnLoad(frame)
     ConfigureStaticCheckboxLabels()
     ProfitCraft_RefreshSettingsUI()
 
-    -- Per-item controls replaced the old global +/- buttons.
+    -- Legacy top controls are replaced by per-recipe row controls in the scroll list.
     if ProfitCraftTrackerMinus then ProfitCraftTrackerMinus:Hide() end
     if ProfitCraftTrackerPlus then ProfitCraftTrackerPlus:Hide() end
 
-    -- Create shopping list entry rows (up to 4 tracked recipes)
-    for i = 1, ProfitCraft_ShoppingListMax do
-        -- Item name text
-        local nameFs = frame:CreateFontString("ProfitCraftShopItem"..i.."Name", "ARTWORK", "GameFontHighlightSmall")
-        nameFs:SetJustifyH("LEFT")
-        nameFs:SetWidth(250)
+    local tracker = ProfitCraftTracker
+    if not tracker then return end
+
+    local trackerScroll = CreateFrame("ScrollFrame", "ProfitCraftTrackerScrollFrame", tracker, "FauxScrollFrameTemplate")
+    trackerScroll:SetPoint("TOPLEFT", ProfitCraftTrackerTitle, "BOTTOMLEFT", 0, -4)
+    trackerScroll:SetPoint("BOTTOMRIGHT", tracker, "BOTTOMRIGHT", -24, 4)
+    trackerScroll:SetScript("OnVerticalScroll", function()
+        FauxScrollFrame_OnVerticalScroll(TRACKER_ROW_HEIGHT, ProfitCraft_UpdateTracker)
+    end)
+
+    for i = 1, TRACKER_DISPLAY_ROWS do
+        local row = CreateFrame("Frame", "ProfitCraftTrackerRow"..i, tracker)
+        row:SetWidth(532)
+        row:SetHeight(TRACKER_ROW_HEIGHT)
 
         if i == 1 then
-            nameFs:SetPoint("TOPLEFT", ProfitCraftTrackerTitle, "BOTTOMLEFT", 0, -4)
+            row:SetPoint("TOPLEFT", trackerScroll, "TOPLEFT", 0, 0)
         else
-            nameFs:SetPoint("TOPLEFT", "ProfitCraftShopItem"..(i-1).."Name", "BOTTOMLEFT", 0, -2)
+            row:SetPoint("TOPLEFT", "ProfitCraftTrackerRow"..(i-1), "BOTTOMLEFT", 0, 0)
         end
-        nameFs:SetText("")
-        nameFs:Hide()
 
-        -- Per-row minus button
-        local minusBtn = CreateFrame("Button", "ProfitCraftShopItem"..i.."Minus", frame)
+        local textFs = row:CreateFontString("ProfitCraftTrackerRow"..i.."Text", "ARTWORK", "GameFontHighlightSmall")
+        textFs:SetJustifyH("LEFT")
+        textFs:SetWidth(430)
+        textFs:SetPoint("LEFT", row, "LEFT", 2, 0)
+
+        local minusBtn = CreateFrame("Button", "ProfitCraftTrackerRow"..i.."Minus", row)
         minusBtn:SetWidth(16)
         minusBtn:SetHeight(16)
-        minusBtn:SetPoint("LEFT", nameFs, "RIGHT", 4, 0)
+        minusBtn:SetPoint("RIGHT", row, "RIGHT", -48, 0)
         minusBtn:SetNormalTexture("Interface\\Buttons\\UI-MinusButton-Up")
         minusBtn:SetPushedTexture("Interface\\Buttons\\UI-MinusButton-Down")
         minusBtn:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight", "ADD")
-        minusBtn.index = i
+        minusBtn.recipeIndex = 0
         minusBtn:SetScript("OnClick", function()
-            ProfitCraft_AdjustShoppingListQty(this.index, -1)
+            ProfitCraft_AdjustShoppingListQty(this.recipeIndex, -1)
         end)
-        minusBtn:Hide()
 
-        -- Qty text
-        local qtyFs = frame:CreateFontString("ProfitCraftShopItem"..i.."Qty", "ARTWORK", "GameFontNormalSmall")
-        qtyFs:SetJustifyH("CENTER")
-        qtyFs:SetWidth(26)
-        qtyFs:SetPoint("LEFT", minusBtn, "RIGHT", 2, 0)
-        qtyFs:SetText("")
-        qtyFs:Hide()
-
-        -- Per-row plus button
-        local plusBtn = CreateFrame("Button", "ProfitCraftShopItem"..i.."Plus", frame)
+        local plusBtn = CreateFrame("Button", "ProfitCraftTrackerRow"..i.."Plus", row)
         plusBtn:SetWidth(16)
         plusBtn:SetHeight(16)
-        plusBtn:SetPoint("LEFT", qtyFs, "RIGHT", 2, 0)
+        plusBtn:SetPoint("LEFT", minusBtn, "RIGHT", 2, 0)
         plusBtn:SetNormalTexture("Interface\\Buttons\\UI-PlusButton-Up")
         plusBtn:SetPushedTexture("Interface\\Buttons\\UI-PlusButton-Down")
         plusBtn:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight", "ADD")
-        plusBtn.index = i
+        plusBtn.recipeIndex = 0
         plusBtn:SetScript("OnClick", function()
-            ProfitCraft_AdjustShoppingListQty(this.index, 1)
+            ProfitCraft_AdjustShoppingListQty(this.recipeIndex, 1)
         end)
-        plusBtn:Hide()
 
-        -- Remove button (small X)
-        local removeBtn = CreateFrame("Button", "ProfitCraftShopItem"..i.."Remove", frame)
+        local removeBtn = CreateFrame("Button", "ProfitCraftTrackerRow"..i.."Remove", row)
         removeBtn:SetWidth(14)
         removeBtn:SetHeight(14)
         removeBtn:SetPoint("LEFT", plusBtn, "RIGHT", 4, 0)
         removeBtn:SetNormalTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Up")
         removeBtn:SetHighlightTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Highlight")
-        removeBtn.index = i
+        removeBtn.recipeIndex = 0
         removeBtn:SetScript("OnClick", function()
-            ProfitCraft_RemoveFromShoppingList(this.index)
+            ProfitCraft_RemoveFromShoppingList(this.recipeIndex)
         end)
-        removeBtn:Hide()
-    end
 
-    -- Reagent summary header
-    local reagentHeader = frame:CreateFontString("ProfitCraftReagentHeader", "ARTWORK", "GameFontNormalSmall")
-    reagentHeader:SetJustifyH("LEFT")
-    reagentHeader:SetTextColor(1, 0.82, 0)
-    reagentHeader:SetText("Reagents by Recipe:")
-    reagentHeader:SetPoint("TOPLEFT", "ProfitCraftShopItem"..ProfitCraft_ShoppingListMax.."Name", "BOTTOMLEFT", 0, -6)
-    reagentHeader:Hide()
-
-    -- Reagent detail lines shown per recipe entry
-    for i = 1, REAGENT_DISPLAY_LINES do
-        local fs = frame:CreateFontString("ProfitCraftReagentLine"..i, "ARTWORK", "GameFontHighlightSmall")
-        fs:SetJustifyH("LEFT")
-        fs:SetWidth(510)
-        if i == 1 then
-            fs:SetPoint("TOPLEFT", reagentHeader, "BOTTOMLEFT", 2, -2)
-        else
-            fs:SetPoint("TOPLEFT", "ProfitCraftReagentLine"..(i-1), "BOTTOMLEFT", 0, -1)
-        end
-        fs:SetText("")
-        fs:Hide()
+        row:Hide()
     end
 end
 
@@ -652,15 +707,6 @@ end
 function ProfitCraft_RemoveFromShoppingList(index)
     if ProfitCraft_ShoppingList[index] then
         table.remove(ProfitCraft_ShoppingList, index)
-        -- Re-index row action buttons
-        for i = 1, ProfitCraft_ShoppingListMax do
-            local rb = getglobal("ProfitCraftShopItem"..i.."Remove")
-            local minusBtn = getglobal("ProfitCraftShopItem"..i.."Minus")
-            local plusBtn = getglobal("ProfitCraftShopItem"..i.."Plus")
-            if rb then rb.index = i end
-            if minusBtn then minusBtn.index = i end
-            if plusBtn then plusBtn.index = i end
-        end
         ProfitCraft_UpdateTracker()
         ProfitCraft_ApplySortAndFilter()
         ProfitCraft_DashboardUpdate()
@@ -692,103 +738,124 @@ function ProfitCraft_TrackerAdjustQty(delta)
     ProfitCraft_AdjustShoppingListQty(count, delta)
 end
 
-function ProfitCraft_UpdateTracker()
-    local count = table.getn(ProfitCraft_ShoppingList)
+function ProfitCraft_SyncShoppingListRecipes()
+    local lookup = {}
+    for _, recipe in ipairs(ProfitCraft_List) do
+        local key = BuildRecipeLookupKey(recipe)
+        if key and not lookup[key] then
+            lookup[key] = recipe
+        end
+    end
 
-    -- Update each shopping list row
-    for i = 1, ProfitCraft_ShoppingListMax do
-        local nameFs = getglobal("ProfitCraftShopItem"..i.."Name")
-        local qtyFs = getglobal("ProfitCraftShopItem"..i.."Qty")
-        local minusBtn = getglobal("ProfitCraftShopItem"..i.."Minus")
-        local plusBtn = getglobal("ProfitCraftShopItem"..i.."Plus")
-        local removeBtn = getglobal("ProfitCraftShopItem"..i.."Remove")
-
-        if nameFs and qtyFs and minusBtn and plusBtn and removeBtn then
-            if i <= count then
-                local entry = ProfitCraft_ShoppingList[i]
-                nameFs:SetText("|cFFFFD100" .. entry.recipe.name .. "|r")
-                qtyFs:SetText("|cFFFFFFFF" .. entry.qty .. "|r")
-                minusBtn.index = i
-                plusBtn.index = i
-                removeBtn.index = i
-                nameFs:Show()
-                qtyFs:Show()
-                minusBtn:Show()
-                plusBtn:Show()
-                removeBtn:Show()
-            else
-                nameFs:Hide()
-                qtyFs:Hide()
-                minusBtn:Hide()
-                plusBtn:Hide()
-                removeBtn:Hide()
+    for _, shoppingEntry in ipairs(ProfitCraft_ShoppingList) do
+        if shoppingEntry.recipe then
+            local key = BuildRecipeLookupKey(shoppingEntry.recipe)
+            if key and lookup[key] then
+                shoppingEntry.recipe = lookup[key]
             end
         end
     end
+end
 
-    -- Show reagent needs per recipe entry instead of one aggregated reagent pool.
-    local reagentHeader = getglobal("ProfitCraftReagentHeader")
-    if count == 0 then
-        if reagentHeader then reagentHeader:Hide() end
-        for i = 1, REAGENT_DISPLAY_LINES do
-            local fs = getglobal("ProfitCraftReagentLine"..i)
-            if fs then fs:Hide() end
-        end
-
-        local titleFs = getglobal("ProfitCraftTrackerTitle")
-        if titleFs then titleFs:SetText("Shopping List  |cFF888888(click recipes above to add)|r") end
-        return
-    end
-
+function ProfitCraft_UpdateTracker()
+    local count = table.getn(ProfitCraft_ShoppingList)
     local titleFs = getglobal("ProfitCraftTrackerTitle")
     if titleFs then titleFs:SetText("Shopping List") end
 
-    local displayLines = {}
-    for _, entry in ipairs(ProfitCraft_ShoppingList) do
-        table.insert(displayLines, "|cFFFFD100" .. entry.recipe.name .. " x" .. entry.qty .. "|r")
+    local rows = {}
+    local bagCountsByID, bagCountsByName = BuildCurrentBagCounts()
 
-        local reagentCount = 0
-        if entry.recipe and entry.recipe.reagents then
-            reagentCount = table.getn(entry.recipe.reagents)
-        end
+    if count == 0 then
+        table.insert(rows, {
+            type = "info",
+            text = "|cFF888888Click recipes above to add|r",
+            recipeIndex = nil,
+        })
+    else
+        for recipeIndex, entry in ipairs(ProfitCraft_ShoppingList) do
+            local recipeName = "Unknown Recipe"
+            if entry.recipe and entry.recipe.name then
+                recipeName = entry.recipe.name
+            end
 
-        if reagentCount == 0 then
-            table.insert(displayLines, "  |cFF888888No reagent data|r")
-        else
-            for _, r in ipairs(entry.recipe.reagents) do
-                local need = (r.count or 0) * (entry.qty or 1)
-                local have = r.playerCount or 0
-                local color = "|cFFFF4444"
-                if have >= need then
-                    color = "|cFF00FF00"
-                elseif have > 0 then
-                    color = "|cFFFFFF00"
+            table.insert(rows, {
+                type = "recipe",
+                text = "|cFFFFD100" .. recipeName .. "|r  |cFFFFFFFFx" .. entry.qty .. "|r",
+                recipeIndex = recipeIndex,
+            })
+
+            local reagentCount = 0
+            if entry.recipe and entry.recipe.reagents then
+                reagentCount = table.getn(entry.recipe.reagents)
+            end
+
+            if reagentCount == 0 then
+                table.insert(rows, {
+                    type = "reagent",
+                    text = "  |cFF888888No reagent data|r",
+                    recipeIndex = nil,
+                })
+            else
+                for _, reagent in ipairs(entry.recipe.reagents) do
+                    local need = (reagent.count or 0) * (entry.qty or 1)
+                    local have = GetCurrentReagentHaveCount(reagent, bagCountsByID, bagCountsByName)
+
+                    local color = "|cFFFF4444"
+                    if have >= need then
+                        color = "|cFF00FF00"
+                    elseif have > 0 then
+                        color = "|cFFFFFF00"
+                    end
+
+                    table.insert(rows, {
+                        type = "reagent",
+                        text = "  " .. color .. have .. "/" .. need .. "|r  " .. (reagent.name or "Unknown"),
+                        recipeIndex = nil,
+                    })
                 end
-                table.insert(displayLines, "  " .. color .. have .. "/" .. need .. "|r  " .. (r.name or "Unknown"))
             end
         end
     end
 
-    local displayedCount = table.getn(displayLines)
-    if displayedCount > REAGENT_DISPLAY_LINES then
-        displayedCount = REAGENT_DISPLAY_LINES
-        if REAGENT_DISPLAY_LINES > 0 then
-            displayLines[REAGENT_DISPLAY_LINES] = "|cFF888888...more reagents not shown|r"
-        end
+    local totalRows = table.getn(rows)
+    local scrollFrame = getglobal("ProfitCraftTrackerScrollFrame")
+    if scrollFrame then
+        FauxScrollFrame_Update(scrollFrame, totalRows, TRACKER_DISPLAY_ROWS, TRACKER_ROW_HEIGHT)
     end
 
-    if reagentHeader then
-        reagentHeader:Show()
+    local offset = 0
+    if scrollFrame then
+        offset = FauxScrollFrame_GetOffset(scrollFrame)
     end
 
-    for i = 1, REAGENT_DISPLAY_LINES do
-        local fs = getglobal("ProfitCraftReagentLine"..i)
-        if fs then
-            if i <= displayedCount and displayLines[i] then
-                fs:SetText(displayLines[i])
-                fs:Show()
+    for i = 1, TRACKER_DISPLAY_ROWS do
+        local row = getglobal("ProfitCraftTrackerRow"..i)
+        local textFs = getglobal("ProfitCraftTrackerRow"..i.."Text")
+        local minusBtn = getglobal("ProfitCraftTrackerRow"..i.."Minus")
+        local plusBtn = getglobal("ProfitCraftTrackerRow"..i.."Plus")
+        local removeBtn = getglobal("ProfitCraftTrackerRow"..i.."Remove")
+
+        if row and textFs and minusBtn and plusBtn and removeBtn then
+            local rowData = rows[offset + i]
+            if rowData then
+                textFs:SetText(rowData.text or "")
+
+                if rowData.type == "recipe" and rowData.recipeIndex then
+                    minusBtn.recipeIndex = rowData.recipeIndex
+                    plusBtn.recipeIndex = rowData.recipeIndex
+                    removeBtn.recipeIndex = rowData.recipeIndex
+                    minusBtn:Show()
+                    plusBtn:Show()
+                    removeBtn:Show()
+                else
+                    minusBtn:Hide()
+                    plusBtn:Hide()
+                    removeBtn:Hide()
+                end
+
+                row:Show()
             else
-                fs:Hide()
+                row:Hide()
             end
         end
     end

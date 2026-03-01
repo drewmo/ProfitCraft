@@ -592,7 +592,7 @@ local BAG_CACHE_THROTTLE = 1
 
 frame:SetScript("OnEvent", function()
     if event == "ADDON_LOADED" and arg1 == addonName then
-        Print("v1.6.1 loaded. Open a profession window or type /pc")
+        Print("v1.6.2 loaded. Open a profession window or type /pc")
 
         -- Initialize Aux API
         InitAuxAPI()
@@ -624,6 +624,10 @@ frame:SetScript("OnEvent", function()
             if ProfitCraftDashboard and ProfitCraftDashboard:IsVisible() then
                 ProfitCraft_CalculateProfits(true)
             end
+        end
+
+        if ProfitCraftDashboard and ProfitCraftDashboard:IsVisible() and ProfitCraft_UpdateTracker then
+            ProfitCraft_UpdateTracker()
         end
 
     elseif event == "TRADE_SKILL_SHOW" then
@@ -870,6 +874,9 @@ function ProfitCraft_CalculateProfits(silent, shouldShowDashboard)
 
     -- Apply filters and sort, then refresh UI
     ProfitCraft_ApplySortAndFilter()
+    if ProfitCraft_SyncShoppingListRecipes then
+        ProfitCraft_SyncShoppingListRecipes()
+    end
 
     if ProfitCraftDashboard then
         if shouldShowDashboard and not ProfitCraftDashboard:IsVisible() then
