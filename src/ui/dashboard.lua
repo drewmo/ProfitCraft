@@ -57,6 +57,37 @@ local function GetSourceStatusToken(source)
     end
 end
 
+local function SetCheckboxLabel(frameName, labelText, width)
+    local checkbox = getglobal(frameName)
+    if not checkbox then return end
+
+    local text = getglobal(frameName .. "Text")
+    if not text then return end
+
+    text:SetText(labelText or "")
+    text:ClearAllPoints()
+    text:SetPoint("LEFT", checkbox, "RIGHT", 2, 0)
+    text:SetJustifyH("LEFT")
+    if width then
+        text:SetWidth(width)
+    end
+end
+
+local function ConfigureStaticCheckboxLabels()
+    SetCheckboxLabel("ProfitCraftFilterLearned", "Learned", 70)
+    SetCheckboxLabel("ProfitCraftFilterUnlearned", "Unlearned", 85)
+    SetCheckboxLabel("ProfitCraftFilterQuest", "Quest", 55)
+    SetCheckboxLabel("ProfitCraftFilterShoppingOnly", "Shopping Only", 105)
+
+    SetCheckboxLabel("ProfitCraftSettingShowQuest", "Show Quest Unlearned", 200)
+    SetCheckboxLabel("ProfitCraftSettingShowTrainer", "Show Trainer Unlearned", 200)
+    SetCheckboxLabel("ProfitCraftSettingShowVendor", "Show Vendor Unlearned", 200)
+    SetCheckboxLabel("ProfitCraftSettingShowDrop", "Show Drop Unlearned", 200)
+    SetCheckboxLabel("ProfitCraftSettingAutoMerchant", "Open at Vendors", 200)
+    SetCheckboxLabel("ProfitCraftSettingAutoAuction", "Open at Auction House", 200)
+    SetCheckboxLabel("ProfitCraftSettingAutoShoppingOnly", "Use Shopping-Only on Auto Open", 210)
+end
+
 -- ============================================================================
 -- Currency Formatting
 -- ============================================================================
@@ -209,6 +240,7 @@ function ProfitCraft_Dashboard_OnLoad(frame)
     if ProfitCraftSettingsPanel then
         ProfitCraftSettingsPanel:Hide()
     end
+    ConfigureStaticCheckboxLabels()
     ProfitCraft_RefreshSettingsUI()
 
     -- Create shopping list entry rows (up to 4 tracked recipes)

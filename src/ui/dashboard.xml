@@ -149,7 +149,7 @@
                 <Anchors>
                     <Anchor point="TOPRIGHT" relativeTo="ProfitCraftDashboard">
                         <Offset>
-                            <AbsDimension x="-36" y="-30"/>
+                            <AbsDimension x="-36" y="-8"/>
                         </Offset>
                     </Anchor>
                 </Anchors>
@@ -191,69 +191,6 @@
                                 <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                     <Offset>
                                         <AbsDimension x="10" y="-10"/>
-                                    </Offset>
-                                </Anchor>
-                            </Anchors>
-                        </FontString>
-                        <FontString name="ProfitCraftSettingShowQuestText" inherits="GameFontNormalSmall" text="Show Quest Unlearned" justifyH="LEFT">
-                            <Anchors>
-                                <Anchor point="LEFT" relativeTo="ProfitCraftSettingShowQuest" relativePoint="RIGHT">
-                                    <Offset>
-                                        <AbsDimension x="2" y="0"/>
-                                    </Offset>
-                                </Anchor>
-                            </Anchors>
-                        </FontString>
-                        <FontString name="ProfitCraftSettingShowTrainerText" inherits="GameFontNormalSmall" text="Show Trainer Unlearned" justifyH="LEFT">
-                            <Anchors>
-                                <Anchor point="LEFT" relativeTo="ProfitCraftSettingShowTrainer" relativePoint="RIGHT">
-                                    <Offset>
-                                        <AbsDimension x="2" y="0"/>
-                                    </Offset>
-                                </Anchor>
-                            </Anchors>
-                        </FontString>
-                        <FontString name="ProfitCraftSettingShowVendorText" inherits="GameFontNormalSmall" text="Show Vendor Unlearned" justifyH="LEFT">
-                            <Anchors>
-                                <Anchor point="LEFT" relativeTo="ProfitCraftSettingShowVendor" relativePoint="RIGHT">
-                                    <Offset>
-                                        <AbsDimension x="2" y="0"/>
-                                    </Offset>
-                                </Anchor>
-                            </Anchors>
-                        </FontString>
-                        <FontString name="ProfitCraftSettingShowDropText" inherits="GameFontNormalSmall" text="Show Drop Unlearned" justifyH="LEFT">
-                            <Anchors>
-                                <Anchor point="LEFT" relativeTo="ProfitCraftSettingShowDrop" relativePoint="RIGHT">
-                                    <Offset>
-                                        <AbsDimension x="2" y="0"/>
-                                    </Offset>
-                                </Anchor>
-                            </Anchors>
-                        </FontString>
-                        <FontString name="ProfitCraftSettingAutoMerchantText" inherits="GameFontNormalSmall" text="Open at Vendors" justifyH="LEFT">
-                            <Anchors>
-                                <Anchor point="LEFT" relativeTo="ProfitCraftSettingAutoMerchant" relativePoint="RIGHT">
-                                    <Offset>
-                                        <AbsDimension x="2" y="0"/>
-                                    </Offset>
-                                </Anchor>
-                            </Anchors>
-                        </FontString>
-                        <FontString name="ProfitCraftSettingAutoAuctionText" inherits="GameFontNormalSmall" text="Open at Auction House" justifyH="LEFT">
-                            <Anchors>
-                                <Anchor point="LEFT" relativeTo="ProfitCraftSettingAutoAuction" relativePoint="RIGHT">
-                                    <Offset>
-                                        <AbsDimension x="2" y="0"/>
-                                    </Offset>
-                                </Anchor>
-                            </Anchors>
-                        </FontString>
-                        <FontString name="ProfitCraftSettingAutoShoppingOnlyText" inherits="GameFontNormalSmall" text="Use Shopping-Only on Auto Open" justifyH="LEFT">
-                            <Anchors>
-                                <Anchor point="LEFT" relativeTo="ProfitCraftSettingAutoShoppingOnly" relativePoint="RIGHT">
-                                    <Offset>
-                                        <AbsDimension x="2" y="0"/>
                                     </Offset>
                                 </Anchor>
                             </Anchors>
@@ -455,47 +392,6 @@
                         </Scripts>
                     </CheckButton>
                 </Frames>
-                <Layers>
-                    <Layer level="OVERLAY">
-                        <!-- Labels anchored to each checkbox to avoid drift -->
-                        <FontString name="ProfitCraftFilterLearnedText" inherits="GameFontNormalSmall" text="Learned" justifyH="LEFT">
-                            <Anchors>
-                                <Anchor point="LEFT" relativeTo="ProfitCraftFilterLearned" relativePoint="RIGHT">
-                                    <Offset>
-                                        <AbsDimension x="2" y="0"/>
-                                    </Offset>
-                                </Anchor>
-                            </Anchors>
-                        </FontString>
-                        <FontString name="ProfitCraftFilterUnlearnedText" inherits="GameFontNormalSmall" text="Unlearned" justifyH="LEFT">
-                            <Anchors>
-                                <Anchor point="LEFT" relativeTo="ProfitCraftFilterUnlearned" relativePoint="RIGHT">
-                                    <Offset>
-                                        <AbsDimension x="2" y="0"/>
-                                    </Offset>
-                                </Anchor>
-                            </Anchors>
-                        </FontString>
-                        <FontString name="ProfitCraftFilterQuestText" inherits="GameFontNormalSmall" text="Quest" justifyH="LEFT">
-                            <Anchors>
-                                <Anchor point="LEFT" relativeTo="ProfitCraftFilterQuest" relativePoint="RIGHT">
-                                    <Offset>
-                                        <AbsDimension x="2" y="0"/>
-                                    </Offset>
-                                </Anchor>
-                            </Anchors>
-                        </FontString>
-                        <FontString name="ProfitCraftFilterShoppingOnlyText" inherits="GameFontNormalSmall" text="Shopping Only" justifyH="LEFT">
-                            <Anchors>
-                                <Anchor point="LEFT" relativeTo="ProfitCraftFilterShoppingOnly" relativePoint="RIGHT">
-                                    <Offset>
-                                        <AbsDimension x="2" y="0"/>
-                                    </Offset>
-                                </Anchor>
-                            </Anchors>
-                        </FontString>
-                    </Layer>
-                </Layers>
             </Frame>
 
             <!-- ============ Column Headers ============ -->
