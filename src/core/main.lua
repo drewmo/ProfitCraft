@@ -262,8 +262,19 @@ local function ParseRecipeItemTooltip(itemLink)
         return nil
     end
 
+    -- Some APIs can surface non-item hyperlinks (e.g. enchant/spell links).
+    -- Only parse recipe data from actual item links.
+    local isItemLink = string.find(itemLink, "|Hitem:", 1, true) ~= nil
+        or string.find(itemLink, "^item:") ~= nil
+    if not isItemLink then
+        return nil
+    end
+
     scanTooltip:ClearLines()
-    scanTooltip:SetHyperlink(itemLink)
+    local ok = pcall(scanTooltip.SetHyperlink, scanTooltip, itemLink)
+    if not ok then
+        return nil
+    end
 
     local professionName = nil
     local requiredSkill = nil
@@ -592,7 +603,7 @@ local BAG_CACHE_THROTTLE = 1
 
 frame:SetScript("OnEvent", function()
     if event == "ADDON_LOADED" and arg1 == addonName then
-        Print("v1.6.2 loaded. Open a profession window or type /pc")
+        Print("v1.6.3 loaded. Open a profession window or type /pc")
 
         -- Initialize Aux API
         InitAuxAPI()
