@@ -1,45 +1,97 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
-    <!-- Entry Template -->
+
+    <!-- Entry Template: 4-column row (Name, Cost, Value, Profit) -->
     <Button name="ProfitCraftEntryTemplate" virtual="true">
         <Size>
-            <AbsDimension x="500" y="24"/>
+            <AbsDimension x="545" y="22"/>
         </Size>
         <Layers>
             <Layer level="BORDER">
-                <FontString name="$parentName" inherits="GameFontNormal" justifyH="LEFT" text="">
+                <!-- Status indicator (learned/unlearned dot) -->
+                <FontString name="$parentStatus" inherits="GameFontNormalSmall" justifyH="CENTER" text="">
                     <Size>
-                        <AbsDimension x="300" y="24"/>
+                        <AbsDimension x="14" y="22"/>
                     </Size>
                     <Anchors>
                         <Anchor point="LEFT">
                             <Offset>
-                                <AbsDimension x="5" y="0"/>
+                                <AbsDimension x="0" y="0"/>
                             </Offset>
                         </Anchor>
                     </Anchors>
                 </FontString>
-                <FontString name="$parentProfit" inherits="GameFontHighlight" justifyH="RIGHT" text="">
+                <!-- Recipe Name -->
+                <FontString name="$parentName" inherits="GameFontNormal" justifyH="LEFT" text="">
                     <Size>
-                        <AbsDimension x="150" y="24"/>
+                        <AbsDimension x="220" y="22"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="LEFT">
+                            <Offset>
+                                <AbsDimension x="16" y="0"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </FontString>
+                <!-- Craft Cost -->
+                <FontString name="$parentCost" inherits="GameFontHighlightSmall" justifyH="RIGHT" text="">
+                    <Size>
+                        <AbsDimension x="110" y="22"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="LEFT">
+                            <Offset>
+                                <AbsDimension x="238" y="0"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </FontString>
+                <!-- Market Value -->
+                <FontString name="$parentValue" inherits="GameFontHighlightSmall" justifyH="RIGHT" text="">
+                    <Size>
+                        <AbsDimension x="110" y="22"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="LEFT">
+                            <Offset>
+                                <AbsDimension x="350" y="0"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </FontString>
+                <!-- Profit -->
+                <FontString name="$parentProfit" inherits="GameFontHighlightSmall" justifyH="RIGHT" text="">
+                    <Size>
+                        <AbsDimension x="90" y="22"/>
                     </Size>
                     <Anchors>
                         <Anchor point="RIGHT">
                             <Offset>
-                                <AbsDimension x="-5" y="0"/>
+                                <AbsDimension x="-2" y="0"/>
                             </Offset>
                         </Anchor>
                     </Anchors>
                 </FontString>
             </Layer>
         </Layers>
-        <!-- A simple highlight on hover -->
         <HighlightTexture file="Interface\QuestFrame\UI-QuestTitleHighlight" alphaMode="ADD"/>
+        <Scripts>
+            <OnClick>
+                ProfitCraft_OnEntryClick(this);
+            </OnClick>
+            <OnEnter>
+                ProfitCraft_OnEntryEnter(this);
+            </OnEnter>
+            <OnLeave>
+                GameTooltip:Hide();
+            </OnLeave>
+        </Scripts>
     </Button>
 
     <!-- Main Dashboard Frame -->
     <Frame name="ProfitCraftDashboard" parent="UIParent" hidden="true" toplevel="true" enableMouse="true" movable="true">
         <Size>
-            <AbsDimension x="600" y="450" />
+            <AbsDimension x="620" y="520" />
         </Size>
         <Anchors>
             <Anchor point="CENTER" />
@@ -61,7 +113,7 @@
             <Layer level="ARTWORK">
                 <Texture name="$parentHeader" file="Interface\DialogFrame\UI-DialogBox-Header">
                     <Size>
-                        <AbsDimension x="256" y="64" />
+                        <AbsDimension x="300" y="64" />
                     </Size>
                     <Anchors>
                         <Anchor point="TOP">
@@ -94,38 +146,311 @@
                     </Anchor>
                 </Anchors>
             </Button>
-            
-            <!-- List Scroll Frame will go here -->
-            <ScrollFrame name="$parentScrollFrame" inherits="FauxScrollFrameTemplate">
+
+            <!-- Filter Bar -->
+            <Frame name="ProfitCraftFilterBar">
                 <Size>
-                    <AbsDimension x="550" y="320"/>
+                    <AbsDimension x="570" y="24" />
                 </Size>
                 <Anchors>
-                    <Anchor point="TOPLEFT">
+                    <Anchor point="TOPLEFT" relativeTo="ProfitCraftDashboard">
                         <Offset>
-                            <AbsDimension x="20" y="-50"/>
+                            <AbsDimension x="20" y="-30" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Frames>
+                    <!-- Learned checkbox -->
+                    <CheckButton name="ProfitCraftFilterLearned" inherits="UICheckButtonTemplate">
+                        <Size>
+                            <AbsDimension x="20" y="20"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="LEFT">
+                                <Offset>
+                                    <AbsDimension x="0" y="0"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>
+                                ProfitCraft_OnFilterChanged();
+                            </OnClick>
+                        </Scripts>
+                    </CheckButton>
+                    <!-- Unlearned checkbox -->
+                    <CheckButton name="ProfitCraftFilterUnlearned" inherits="UICheckButtonTemplate">
+                        <Size>
+                            <AbsDimension x="20" y="20"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="LEFT" relativeTo="ProfitCraftFilterLearned" relativePoint="RIGHT">
+                                <Offset>
+                                    <AbsDimension x="60" y="0"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>
+                                ProfitCraft_OnFilterChanged();
+                            </OnClick>
+                        </Scripts>
+                    </CheckButton>
+                    <!-- Quest checkbox -->
+                    <CheckButton name="ProfitCraftFilterQuest" inherits="UICheckButtonTemplate">
+                        <Size>
+                            <AbsDimension x="20" y="20"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="LEFT" relativeTo="ProfitCraftFilterUnlearned" relativePoint="RIGHT">
+                                <Offset>
+                                    <AbsDimension x="72" y="0"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>
+                                ProfitCraft_OnFilterChanged();
+                            </OnClick>
+                        </Scripts>
+                    </CheckButton>
+                </Frames>
+                <Layers>
+                    <Layer level="OVERLAY">
+                        <FontString name="ProfitCraftFilterLearnedText" inherits="GameFontNormalSmall" text="Learned" justifyH="LEFT">
+                            <Anchors>
+                                <Anchor point="LEFT" relativeTo="ProfitCraftFilterLearned" relativePoint="RIGHT">
+                                    <Offset>
+                                        <AbsDimension x="0" y="1"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                        <FontString name="ProfitCraftFilterUnlearnedText" inherits="GameFontNormalSmall" text="Unlearned" justifyH="LEFT">
+                            <Anchors>
+                                <Anchor point="LEFT" relativeTo="ProfitCraftFilterUnlearned" relativePoint="RIGHT">
+                                    <Offset>
+                                        <AbsDimension x="0" y="1"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                        <FontString name="ProfitCraftFilterQuestText" inherits="GameFontNormalSmall" text="Quest" justifyH="LEFT">
+                            <Anchors>
+                                <Anchor point="LEFT" relativeTo="ProfitCraftFilterQuest" relativePoint="RIGHT">
+                                    <Offset>
+                                        <AbsDimension x="0" y="1"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                    </Layer>
+                </Layers>
+            </Frame>
+
+            <!-- Column Headers -->
+            <Frame name="ProfitCraftColumnHeaders">
+                <Size>
+                    <AbsDimension x="570" y="20"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="ProfitCraftDashboard">
+                        <Offset>
+                            <AbsDimension x="20" y="-56"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Frames>
+                    <Button name="ProfitCraftHeaderName">
+                        <Size>
+                            <AbsDimension x="236" y="20"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="LEFT">
+                                <Offset>
+                                    <AbsDimension x="0" y="0"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <NormalTexture file="Interface\FriendsFrame\WhoFrame-ColumnHead"/>
+                        <HighlightTexture file="Interface\PaperDollInfoFrame\UI-Character-Tab-Highlight" alphaMode="ADD"/>
+                        <NormalFont inherits="GameFontHighlightSmall"/>
+                        <NormalText text="  Recipe Name"/>
+                        <Scripts>
+                            <OnClick>ProfitCraft_SortBy("name");</OnClick>
+                        </Scripts>
+                    </Button>
+                    <Button name="ProfitCraftHeaderCost">
+                        <Size>
+                            <AbsDimension x="112" y="20"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="LEFT" relativeTo="ProfitCraftHeaderName" relativePoint="RIGHT"/>
+                        </Anchors>
+                        <NormalTexture file="Interface\FriendsFrame\WhoFrame-ColumnHead"/>
+                        <HighlightTexture file="Interface\PaperDollInfoFrame\UI-Character-Tab-Highlight" alphaMode="ADD"/>
+                        <NormalFont inherits="GameFontHighlightSmall"/>
+                        <NormalText text="Craft Cost"/>
+                        <Scripts>
+                            <OnClick>ProfitCraft_SortBy("cost");</OnClick>
+                        </Scripts>
+                    </Button>
+                    <Button name="ProfitCraftHeaderValue">
+                        <Size>
+                            <AbsDimension x="112" y="20"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="LEFT" relativeTo="ProfitCraftHeaderCost" relativePoint="RIGHT"/>
+                        </Anchors>
+                        <NormalTexture file="Interface\FriendsFrame\WhoFrame-ColumnHead"/>
+                        <HighlightTexture file="Interface\PaperDollInfoFrame\UI-Character-Tab-Highlight" alphaMode="ADD"/>
+                        <NormalFont inherits="GameFontHighlightSmall"/>
+                        <NormalText text="Market Value"/>
+                        <Scripts>
+                            <OnClick>ProfitCraft_SortBy("marketValue");</OnClick>
+                        </Scripts>
+                    </Button>
+                    <Button name="ProfitCraftHeaderProfit">
+                        <Size>
+                            <AbsDimension x="92" y="20"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="LEFT" relativeTo="ProfitCraftHeaderValue" relativePoint="RIGHT"/>
+                        </Anchors>
+                        <NormalTexture file="Interface\FriendsFrame\WhoFrame-ColumnHead"/>
+                        <HighlightTexture file="Interface\PaperDollInfoFrame\UI-Character-Tab-Highlight" alphaMode="ADD"/>
+                        <NormalFont inherits="GameFontHighlightSmall"/>
+                        <NormalText text="Profit"/>
+                        <Scripts>
+                            <OnClick>ProfitCraft_SortBy("profit");</OnClick>
+                        </Scripts>
+                    </Button>
+                </Frames>
+                <Layers>
+                    <Layer level="BACKGROUND">
+                        <Texture>
+                            <Color r="0" g="0" b="0" a="0.3"/>
+                        </Texture>
+                    </Layer>
+                </Layers>
+            </Frame>
+
+            <!-- Scrollable List Area -->
+            <ScrollFrame name="ProfitCraftDashboardScrollFrame" inherits="FauxScrollFrameTemplate">
+                <Size>
+                    <AbsDimension x="555" y="286"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="ProfitCraftDashboard">
+                        <Offset>
+                            <AbsDimension x="20" y="-78"/>
                         </Offset>
                     </Anchor>
                 </Anchors>
                 <Scripts>
                     <OnVerticalScroll>
-                        FauxScrollFrame_OnVerticalScroll(50, ProfitCraft_DashboardUpdate);
+                        FauxScrollFrame_OnVerticalScroll(22, ProfitCraft_DashboardUpdate);
                     </OnVerticalScroll>
                 </Scripts>
             </ScrollFrame>
-            
-            <!-- Shopping List / Reagent tracker UI will go below -->
-            <Frame name="$parentTracker">
+
+            <!-- Separator line above shopping list -->
+            <Frame name="ProfitCraftSeparator">
                 <Size>
-                    <AbsDimension x="550" y="50" />
+                    <AbsDimension x="570" y="2"/>
                 </Size>
                 <Anchors>
-                    <Anchor point="BOTTOM">
+                    <Anchor point="TOPLEFT" relativeTo="ProfitCraftDashboard">
                         <Offset>
-                            <AbsDimension x="0" y="15" />
+                            <AbsDimension x="20" y="-370"/>
                         </Offset>
                     </Anchor>
                 </Anchors>
+                <Layers>
+                    <Layer level="ARTWORK">
+                        <Texture>
+                            <Color r="0.5" g="0.5" b="0.5" a="0.6"/>
+                        </Texture>
+                    </Layer>
+                </Layers>
+            </Frame>
+
+            <!-- Shopping List Tracker -->
+            <Frame name="ProfitCraftTracker">
+                <Size>
+                    <AbsDimension x="570" y="120" />
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="ProfitCraftDashboard">
+                        <Offset>
+                            <AbsDimension x="20" y="-376"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Layers>
+                    <Layer level="ARTWORK">
+                        <FontString name="ProfitCraftTrackerTitle" inherits="GameFontNormal" text="Shopping List" justifyH="LEFT">
+                            <Anchors>
+                                <Anchor point="TOPLEFT">
+                                    <Offset>
+                                        <AbsDimension x="0" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                        <FontString name="ProfitCraftTrackerItemName" inherits="GameFontHighlight" text="Click a recipe above to track" justifyH="LEFT">
+                            <Size>
+                                <AbsDimension x="300" y="16"/>
+                            </Size>
+                            <Anchors>
+                                <Anchor point="TOPLEFT">
+                                    <Offset>
+                                        <AbsDimension x="0" y="-18"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                    </Layer>
+                </Layers>
+                <Frames>
+                    <!-- Quantity controls -->
+                    <Button name="ProfitCraftTrackerMinus">
+                        <Size>
+                            <AbsDimension x="22" y="22"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPRIGHT" relativeTo="ProfitCraftTracker">
+                                <Offset>
+                                    <AbsDimension x="-50" y="0"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <NormalTexture file="Interface\Buttons\UI-MinusButton-Up"/>
+                        <PushedTexture file="Interface\Buttons\UI-MinusButton-Down"/>
+                        <HighlightTexture file="Interface\Buttons\UI-PlusButton-Hilight" alphaMode="ADD"/>
+                        <Scripts>
+                            <OnClick>ProfitCraft_TrackerAdjustQty(-1);</OnClick>
+                        </Scripts>
+                    </Button>
+                    <Button name="ProfitCraftTrackerPlus">
+                        <Size>
+                            <AbsDimension x="22" y="22"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="LEFT" relativeTo="ProfitCraftTrackerMinus" relativePoint="RIGHT">
+                                <Offset>
+                                    <AbsDimension x="24" y="0"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <NormalTexture file="Interface\Buttons\UI-PlusButton-Up"/>
+                        <PushedTexture file="Interface\Buttons\UI-PlusButton-Down"/>
+                        <HighlightTexture file="Interface\Buttons\UI-PlusButton-Hilight" alphaMode="ADD"/>
+                        <Scripts>
+                            <OnClick>ProfitCraft_TrackerAdjustQty(1);</OnClick>
+                        </Scripts>
+                    </Button>
+                </Frames>
             </Frame>
         </Frames>
 
