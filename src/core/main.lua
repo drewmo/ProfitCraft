@@ -2,6 +2,12 @@
 -- 1.12.1 Client Compatibility
 
 local addonName = "ProfitCraft"
+
+-- Top-level diagnostic: if you see this in chat, the .lua file is being loaded
+if DEFAULT_CHAT_FRAME then
+    DEFAULT_CHAT_FRAME:AddMessage("|cFF00FF00[ProfitCraft]|r: main.lua is loading...")
+end
+
 local frame = CreateFrame("Frame", addonName.."Frame")
 
 -- Helper to print messages to the default chat frame
@@ -17,6 +23,12 @@ frame:RegisterEvent("TRADE_SKILL_UPDATE")
 frame:SetScript("OnEvent", function()
     if event == "ADDON_LOADED" and arg1 == addonName then
         Print("Loaded successfully. Waiting for profession window.")
+        -- Check if Aux is available
+        if not Aux or not Aux.history then
+            Print("|cFFFF0000WARNING:|r aux-addon not detected. Pricing data will not be available.")
+        else
+            Print("aux-addon detected. Pricing integration active.")
+        end
         -- Initialize SavedVariables here if they don't exist
         if not ProfitCraftDB then
             ProfitCraftDB = {}

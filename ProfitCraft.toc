@@ -3,7 +3,7 @@
 ## Notes: Calculates and displays the most profitable items to craft based on Aux pricing.
 ## Author: ProfitCraft Team
 ## Version: 1.0.1
-## Dependencies: aux-addon
+## OptionalDeps: aux-addon
 ## SavedVariables: ProfitCraftDB
 
 src/core/main.lua
