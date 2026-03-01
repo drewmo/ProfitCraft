@@ -586,6 +586,7 @@ end
 -- ============================================================================
 
 frame:RegisterEvent("ADDON_LOADED")
+frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("BAG_UPDATE")
 frame:RegisterEvent("SKILL_LINES_CHANGED")
 frame:RegisterEvent("TRADE_SKILL_SHOW")
@@ -603,7 +604,7 @@ local BAG_CACHE_THROTTLE = 1
 
 frame:SetScript("OnEvent", function()
     if event == "ADDON_LOADED" and arg1 == addonName then
-        Print("v1.6.3 loaded. Open a profession window or type /pc")
+        Print("v1.6.5 loaded. Open a profession window or type /pc")
 
         -- Initialize Aux API
         InitAuxAPI()
@@ -623,6 +624,11 @@ frame:SetScript("OnEvent", function()
         ProfitCraft_CacheBagRecipeItems()
 
         -- Initialize Minimap Button
+        if ProfitCraft_InitMinimapButton then
+            ProfitCraft_InitMinimapButton()
+        end
+
+    elseif event == "PLAYER_ENTERING_WORLD" then
         if ProfitCraft_InitMinimapButton then
             ProfitCraft_InitMinimapButton()
         end
