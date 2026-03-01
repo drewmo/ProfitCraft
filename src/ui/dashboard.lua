@@ -579,6 +579,9 @@ function ProfitCraft_OnEntryEnter(btn)
     end
 
     GameTooltip:AddLine(" ")
+    if data.profession then
+        GameTooltip:AddDoubleLine("Profession:", data.profession, 0.7, 0.7, 0.7, 1, 1, 1)
+    end
     GameTooltip:AddDoubleLine("Market Value:", ProfitCraft_FormatCurrencyNeutral(data.marketValue), 0.7, 0.7, 0.7)
     GameTooltip:AddDoubleLine("Craft Cost:", ProfitCraft_FormatCurrencyNeutral(data.cost), 0.7, 0.7, 0.7)
     GameTooltip:AddDoubleLine("Profit:", ProfitCraft_FormatCurrency(data.profit), 0.7, 0.7, 0.7)
@@ -793,8 +796,12 @@ function ProfitCraft_ToggleDashboard()
         end
     else
         ProfitCraftDashboard:Show()
-        ProfitCraft_ApplySortAndFilter()
-        ProfitCraft_DashboardUpdate()
-        ProfitCraft_UpdateTracker()
+        if ProfitCraft_CalculateProfits then
+            ProfitCraft_CalculateProfits(true)
+        else
+            ProfitCraft_ApplySortAndFilter()
+            ProfitCraft_DashboardUpdate()
+            ProfitCraft_UpdateTracker()
+        end
     end
 end
