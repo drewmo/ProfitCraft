@@ -72,6 +72,20 @@ local function NormalizeRecipeName(name)
     return string.lower(name)
 end
 
+local function TrimText(value)
+    if not value then return nil end
+    local trimmed = string.gsub(value, "^%s+", "")
+    trimmed = string.gsub(trimmed, "%s+$", "")
+    return trimmed
+end
+
+local function GetItemIDFromLink(itemLink)
+    if not itemLink then return nil end
+    local _, _, itemId = string.find(itemLink, "item:(%d+):")
+    if not itemId then return nil end
+    return tonumber(itemId)
+end
+
 local function GetCharacterKey()
     local playerName = UnitName("player") or "UnknownPlayer"
     local realmName = "UnknownRealm"
@@ -94,6 +108,7 @@ local function EnsureCharacterData()
             professions = {},
             knownRecipes = {},
             trainerRecipes = {},
+            discoveredRecipes = {},
         }
     end
 
@@ -101,6 +116,7 @@ local function EnsureCharacterData()
     if not data.professions then data.professions = {} end
     if not data.knownRecipes then data.knownRecipes = {} end
     if not data.trainerRecipes then data.trainerRecipes = {} end
+    if not data.discoveredRecipes then data.discoveredRecipes = {} end
 
     return data
 end
@@ -181,6 +197,32 @@ local function StoreTrainerRecipe(profession, recipeName, requiredSkill, trainer
     existing.lastSeen = (GetTime and GetTime()) or 0
 end
 
+local function StoreDiscoveredRecipe(profession, recipeName, requiredSkill, source, details, itemId)
+    if not IsTrackedProfession(profession) then return end
+
+    local recipeKey = NormalizeRecipeName(recipeName)
+    if not recipeKey then return end
+
+    local data = EnsureCharacterData()
+    if not data.discoveredRecipes[profession] then
+        data.discoveredRecipes[profession] = {}
+    end
+
+    local byProfession = data.discoveredRecipes[profession]
+    local existing = byProfession[recipeKey]
+    if not existing then
+        existing = {}
+        byProfession[recipeKey] = existing
+    end
+
+    existing.name = recipeName
+    existing.reqSkill = requiredSkill or existing.reqSkill or 1
+    existing.source = source or existing.source or "Drop"
+    existing.details = details or existing.details
+    existing.id = itemId or existing.id
+    existing.lastSeen = (GetTime and GetTime()) or 0
+end
+
 local function IsProfessionRankTraining(serviceName, professionName)
     if not serviceName or not professionName then
         return false
@@ -205,6 +247,78 @@ local function IsProfessionRankTraining(serviceName, professionName)
     if string.find(lowerName, "master", 1, true) then return true end
 
     return false
+end
+
+local scanTooltip = CreateFrame("GameTooltip", "ProfitCraftScanTooltip", nil, "GameTooltipTemplate")
+if scanTooltip and scanTooltip.SetOwner and WorldFrame then
+    scanTooltip:SetOwner(WorldFrame, "ANCHOR_NONE")
+end
+
+local function ParseRecipeItemTooltip(itemLink)
+    if not scanTooltip or not scanTooltip.SetHyperlink then
+        return nil
+    end
+    if not itemLink then
+        return nil
+    end
+
+    scanTooltip:ClearLines()
+    scanTooltip:SetHyperlink(itemLink)
+
+    local professionName = nil
+    local requiredSkill = nil
+    local taughtRecipeName = nil
+
+    for i = 2, 30 do
+        local line = getglobal("ProfitCraftScanTooltipTextLeft" .. i)
+        if line then
+            local text = line:GetText()
+            if text and text ~= "" then
+                local reqProfession, reqValue = string.match(text, "^Requires%s+(.+)%s+%((%d+)%)$")
+                reqProfession = TrimText(reqProfession)
+
+                if reqProfession and IsTrackedProfession(reqProfession) then
+                    professionName = reqProfession
+                    requiredSkill = tonumber(reqValue) or requiredSkill
+                end
+
+                local taughtName = string.match(text, "^Use:%s+Teaches you how to make%s+(.+)%.$")
+                taughtName = TrimText(taughtName)
+                if taughtName and taughtName ~= "" then
+                    taughtRecipeName = taughtName
+                end
+            end
+        end
+    end
+
+    if not professionName or not taughtRecipeName then
+        return nil
+    end
+
+    return {
+        profession = professionName,
+        reqSkill = requiredSkill or 1,
+        name = taughtRecipeName,
+    }
+end
+
+local function CacheRecipeFromItemLink(itemLink, source, details)
+    local parsed = ParseRecipeItemTooltip(itemLink)
+    if not parsed then
+        return false
+    end
+
+    local itemId = GetItemIDFromLink(itemLink)
+    StoreDiscoveredRecipe(
+        parsed.profession,
+        parsed.name,
+        parsed.reqSkill,
+        source,
+        details,
+        itemId
+    )
+
+    return true
 end
 
 function ProfitCraft_CacheTrainerRecipes()
@@ -242,9 +356,63 @@ function ProfitCraft_CacheTrainerRecipes()
     end
 end
 
+function ProfitCraft_CacheBagRecipeItems()
+    if not GetContainerNumSlots or not GetContainerItemLink then
+        return
+    end
+
+    for bag = 0, 4 do
+        local numSlots = GetContainerNumSlots(bag)
+        if numSlots and numSlots > 0 then
+            for slot = 1, numSlots do
+                local itemLink = GetContainerItemLink(bag, slot)
+                if itemLink then
+                    CacheRecipeFromItemLink(itemLink, "Drop", "Discovered from recipe item in inventory.")
+                end
+            end
+        end
+    end
+end
+
+function ProfitCraft_CacheAuctionRecipeItems()
+    if not GetNumAuctionItems or not GetAuctionItemLink then
+        return
+    end
+
+    local numAuctionItems = GetNumAuctionItems("list")
+    if not numAuctionItems or numAuctionItems == 0 then
+        return
+    end
+
+    for i = 1, numAuctionItems do
+        local itemLink = GetAuctionItemLink("list", i)
+        if itemLink then
+            CacheRecipeFromItemLink(itemLink, "Drop", "Seen on Auction House.")
+        end
+    end
+end
+
 local function GetCachedTrainerRecipesForProfession(professionName, professionRank)
     local data = EnsureCharacterData()
     local byProfession = data.trainerRecipes[professionName]
+    if not byProfession then
+        return nil
+    end
+
+    local available = {}
+    for _, recipe in pairs(byProfession) do
+        local reqSkill = recipe.reqSkill or 1
+        if professionRank >= reqSkill then
+            table.insert(available, recipe)
+        end
+    end
+
+    return available
+end
+
+local function GetCachedDiscoveredRecipesForProfession(professionName, professionRank)
+    local data = EnsureCharacterData()
+    local byProfession = data.discoveredRecipes[professionName]
     if not byProfession then
         return nil
     end
@@ -407,20 +575,24 @@ end
 -- ============================================================================
 
 frame:RegisterEvent("ADDON_LOADED")
+frame:RegisterEvent("BAG_UPDATE")
 frame:RegisterEvent("SKILL_LINES_CHANGED")
 frame:RegisterEvent("TRADE_SKILL_SHOW")
 frame:RegisterEvent("TRADE_SKILL_UPDATE")
 frame:RegisterEvent("TRAINER_SHOW")
 frame:RegisterEvent("TRAINER_UPDATE")
+frame:RegisterEvent("AUCTION_ITEM_LIST_UPDATE")
 frame:RegisterEvent("MERCHANT_SHOW")
 frame:RegisterEvent("AUCTION_HOUSE_SHOW")
 
 local lastCalcTime = 0
 local CALC_THROTTLE = 1
+local lastBagRecipeCacheTime = 0
+local BAG_CACHE_THROTTLE = 1
 
 frame:SetScript("OnEvent", function()
     if event == "ADDON_LOADED" and arg1 == addonName then
-        Print("v1.5.0 loaded. Open a profession window or type /pc")
+        Print("v1.6.1 loaded. Open a profession window or type /pc")
 
         -- Initialize Aux API
         InitAuxAPI()
@@ -437,16 +609,27 @@ frame:SetScript("OnEvent", function()
         ProfitCraft_EnsureSettings()
         EnsureCharacterData()
         ProfitCraft_RefreshProfessionSnapshot()
+        ProfitCraft_CacheBagRecipeItems()
 
         -- Initialize Minimap Button
         if ProfitCraft_InitMinimapButton then
             ProfitCraft_InitMinimapButton()
         end
 
+    elseif event == "BAG_UPDATE" then
+        local now = GetTime()
+        if (now - lastBagRecipeCacheTime) > BAG_CACHE_THROTTLE then
+            lastBagRecipeCacheTime = now
+            ProfitCraft_CacheBagRecipeItems()
+            if ProfitCraftDashboard and ProfitCraftDashboard:IsVisible() then
+                ProfitCraft_CalculateProfits(true)
+            end
+        end
+
     elseif event == "TRADE_SKILL_SHOW" then
         -- Re-check Aux on first use (it may load after us)
         if not hasAux then InitAuxAPI() end
-        ProfitCraft_CalculateProfits()
+        ProfitCraft_CalculateProfits(false, true)
 
     elseif event == "SKILL_LINES_CHANGED" then
         ProfitCraft_RefreshProfessionSnapshot()
@@ -460,11 +643,17 @@ frame:SetScript("OnEvent", function()
             ProfitCraft_CalculateProfits(true)
         end
 
+    elseif event == "AUCTION_ITEM_LIST_UPDATE" then
+        ProfitCraft_CacheAuctionRecipeItems()
+        if ProfitCraftDashboard and ProfitCraftDashboard:IsVisible() then
+            ProfitCraft_CalculateProfits(true)
+        end
+
     elseif event == "TRADE_SKILL_UPDATE" then
         local now = GetTime()
         if (now - lastCalcTime) > CALC_THROTTLE then
             lastCalcTime = now
-            ProfitCraft_CalculateProfits()
+            ProfitCraft_CalculateProfits(true)
         end
     elseif event == "MERCHANT_SHOW" then
         if ProfitCraft_HandleContextAutoOpen then
@@ -488,6 +677,7 @@ SlashCmdList["PROFITCRAFT"] = function(msg)
         Print("Commands:")
         Print("  /pc — Toggle the dashboard")
         Print("  /pc clear — Clear the shopping list")
+        Print("  /pc scan — Re-scan known recipe sources (bags, trainer, AH list)")
         Print("  /pc settings — Toggle the settings panel")
         Print("  /pc help — Show this help")
     elseif msg == "settings" then
@@ -497,6 +687,13 @@ SlashCmdList["PROFITCRAFT"] = function(msg)
             end
             ProfitCraft_ToggleSettings()
         end
+    elseif msg == "scan" then
+        ProfitCraft_RefreshProfessionSnapshot()
+        ProfitCraft_CacheBagRecipeItems()
+        ProfitCraft_CacheTrainerRecipes()
+        ProfitCraft_CacheAuctionRecipeItems()
+        ProfitCraft_CalculateProfits()
+        Print("Rescanned profession and recipe sources.")
     elseif msg == "clear" then
         ProfitCraft_ShoppingList = {}
         ProfitCraft_UpdateTracker()
@@ -572,10 +769,17 @@ local function AppendUnlearnedRecipesForProfession(professionName, professionRan
         end
     end
 
+    local discoveredRecipes = GetCachedDiscoveredRecipesForProfession(professionName, professionRank)
+    if discoveredRecipes then
+        for _, recipe in ipairs(discoveredRecipes) do
+            TryAddRecipe(recipe)
+        end
+    end
+
     return added
 end
 
-function ProfitCraft_CalculateProfits(silent)
+function ProfitCraft_CalculateProfits(silent, shouldShowDashboard)
     local numSkills = GetNumTradeSkills() or 0
     local skillName, skillRank, skillMaxRank = GetTradeSkillLine()
     local hasOpenTradeSkill = numSkills > 0 and skillName and skillName ~= "UNKNOWN"
@@ -668,11 +872,14 @@ function ProfitCraft_CalculateProfits(silent)
     ProfitCraft_ApplySortAndFilter()
 
     if ProfitCraftDashboard then
-        if not ProfitCraftDashboard:IsVisible() then
+        if shouldShowDashboard and not ProfitCraftDashboard:IsVisible() then
             ProfitCraftDashboard:Show()
         end
-        ProfitCraft_DashboardUpdate()
-        ProfitCraft_UpdateTracker()
+
+        if ProfitCraftDashboard:IsVisible() then
+            ProfitCraft_DashboardUpdate()
+            ProfitCraft_UpdateTracker()
+        end
     end
 
     local learnedCount = 0

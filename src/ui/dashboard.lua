@@ -26,6 +26,7 @@ ProfitCraft_ShoppingList = {}
 ProfitCraft_ShoppingListMax = 4
 
 local NUM_DISPLAY_ROWS = 11
+local REAGENT_DISPLAY_LINES = 12
 
 local function GetSettingValue(key, defaultValue)
     if ProfitCraft_GetSetting then
@@ -278,12 +279,16 @@ function ProfitCraft_Dashboard_OnLoad(frame)
     ConfigureStaticCheckboxLabels()
     ProfitCraft_RefreshSettingsUI()
 
+    -- Per-item controls replaced the old global +/- buttons.
+    if ProfitCraftTrackerMinus then ProfitCraftTrackerMinus:Hide() end
+    if ProfitCraftTrackerPlus then ProfitCraftTrackerPlus:Hide() end
+
     -- Create shopping list entry rows (up to 4 tracked recipes)
     for i = 1, ProfitCraft_ShoppingListMax do
         -- Item name text
         local nameFs = frame:CreateFontString("ProfitCraftShopItem"..i.."Name", "ARTWORK", "GameFontHighlightSmall")
         nameFs:SetJustifyH("LEFT")
-        nameFs:SetWidth(300)
+        nameFs:SetWidth(250)
 
         if i == 1 then
             nameFs:SetPoint("TOPLEFT", ProfitCraftTrackerTitle, "BOTTOMLEFT", 0, -4)
@@ -293,18 +298,47 @@ function ProfitCraft_Dashboard_OnLoad(frame)
         nameFs:SetText("")
         nameFs:Hide()
 
+        -- Per-row minus button
+        local minusBtn = CreateFrame("Button", "ProfitCraftShopItem"..i.."Minus", frame)
+        minusBtn:SetWidth(16)
+        minusBtn:SetHeight(16)
+        minusBtn:SetPoint("LEFT", nameFs, "RIGHT", 4, 0)
+        minusBtn:SetNormalTexture("Interface\\Buttons\\UI-MinusButton-Up")
+        minusBtn:SetPushedTexture("Interface\\Buttons\\UI-MinusButton-Down")
+        minusBtn:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight", "ADD")
+        minusBtn.index = i
+        minusBtn:SetScript("OnClick", function()
+            ProfitCraft_AdjustShoppingListQty(this.index, -1)
+        end)
+        minusBtn:Hide()
+
         -- Qty text
         local qtyFs = frame:CreateFontString("ProfitCraftShopItem"..i.."Qty", "ARTWORK", "GameFontNormalSmall")
-        qtyFs:SetJustifyH("RIGHT")
-        qtyFs:SetPoint("LEFT", nameFs, "RIGHT", 5, 0)
+        qtyFs:SetJustifyH("CENTER")
+        qtyFs:SetWidth(26)
+        qtyFs:SetPoint("LEFT", minusBtn, "RIGHT", 2, 0)
         qtyFs:SetText("")
         qtyFs:Hide()
+
+        -- Per-row plus button
+        local plusBtn = CreateFrame("Button", "ProfitCraftShopItem"..i.."Plus", frame)
+        plusBtn:SetWidth(16)
+        plusBtn:SetHeight(16)
+        plusBtn:SetPoint("LEFT", qtyFs, "RIGHT", 2, 0)
+        plusBtn:SetNormalTexture("Interface\\Buttons\\UI-PlusButton-Up")
+        plusBtn:SetPushedTexture("Interface\\Buttons\\UI-PlusButton-Down")
+        plusBtn:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight", "ADD")
+        plusBtn.index = i
+        plusBtn:SetScript("OnClick", function()
+            ProfitCraft_AdjustShoppingListQty(this.index, 1)
+        end)
+        plusBtn:Hide()
 
         -- Remove button (small X)
         local removeBtn = CreateFrame("Button", "ProfitCraftShopItem"..i.."Remove", frame)
         removeBtn:SetWidth(14)
         removeBtn:SetHeight(14)
-        removeBtn:SetPoint("LEFT", qtyFs, "RIGHT", 4, 0)
+        removeBtn:SetPoint("LEFT", plusBtn, "RIGHT", 4, 0)
         removeBtn:SetNormalTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Up")
         removeBtn:SetHighlightTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Highlight")
         removeBtn.index = i
@@ -318,15 +352,15 @@ function ProfitCraft_Dashboard_OnLoad(frame)
     local reagentHeader = frame:CreateFontString("ProfitCraftReagentHeader", "ARTWORK", "GameFontNormalSmall")
     reagentHeader:SetJustifyH("LEFT")
     reagentHeader:SetTextColor(1, 0.82, 0)
-    reagentHeader:SetText("Reagents Needed:")
+    reagentHeader:SetText("Reagents by Recipe:")
     reagentHeader:SetPoint("TOPLEFT", "ProfitCraftShopItem"..ProfitCraft_ShoppingListMax.."Name", "BOTTOMLEFT", 0, -6)
     reagentHeader:Hide()
 
-    -- Aggregated reagent lines (up to 8)
-    for i = 1, 8 do
+    -- Reagent detail lines shown per recipe entry
+    for i = 1, REAGENT_DISPLAY_LINES do
         local fs = frame:CreateFontString("ProfitCraftReagentLine"..i, "ARTWORK", "GameFontHighlightSmall")
         fs:SetJustifyH("LEFT")
-        fs:SetWidth(400)
+        fs:SetWidth(510)
         if i == 1 then
             fs:SetPoint("TOPLEFT", reagentHeader, "BOTTOMLEFT", 2, -2)
         else
@@ -618,10 +652,14 @@ end
 function ProfitCraft_RemoveFromShoppingList(index)
     if ProfitCraft_ShoppingList[index] then
         table.remove(ProfitCraft_ShoppingList, index)
-        -- Re-index remove buttons
+        -- Re-index row action buttons
         for i = 1, ProfitCraft_ShoppingListMax do
             local rb = getglobal("ProfitCraftShopItem"..i.."Remove")
+            local minusBtn = getglobal("ProfitCraftShopItem"..i.."Minus")
+            local plusBtn = getglobal("ProfitCraftShopItem"..i.."Plus")
             if rb then rb.index = i end
+            if minusBtn then minusBtn.index = i end
+            if plusBtn then plusBtn.index = i end
         end
         ProfitCraft_UpdateTracker()
         ProfitCraft_ApplySortAndFilter()
@@ -629,65 +667,74 @@ function ProfitCraft_RemoveFromShoppingList(index)
     end
 end
 
+local function ClampShoppingQty(qty)
+    if qty < 1 then return 1 end
+    if qty > 99 then return 99 end
+    return qty
+end
+
+function ProfitCraft_AdjustShoppingListQty(index, delta)
+    local entry = ProfitCraft_ShoppingList[index]
+    if not entry then return end
+
+    entry.qty = ClampShoppingQty((entry.qty or 1) + (delta or 0))
+
+    ProfitCraft_UpdateTracker()
+    ProfitCraft_ApplySortAndFilter()
+    ProfitCraft_DashboardUpdate()
+end
+
 function ProfitCraft_TrackerAdjustQty(delta)
-    -- Apply to the LAST added item in the shopping list
+    -- Legacy control fallback: adjust the most recently added entry.
     local count = table.getn(ProfitCraft_ShoppingList)
     if count == 0 then return end
 
-    local entry = ProfitCraft_ShoppingList[count]
-    entry.qty = entry.qty + delta
-    if entry.qty < 1 then entry.qty = 1 end
-    if entry.qty > 99 then entry.qty = 99 end
-
-    ProfitCraft_UpdateTracker()
+    ProfitCraft_AdjustShoppingListQty(count, delta)
 end
 
 function ProfitCraft_UpdateTracker()
     local count = table.getn(ProfitCraft_ShoppingList)
 
-    -- Update qty display on the +/- buttons area
-    local qtyText = getglobal("ProfitCraftTrackerQtyText")
-    if qtyText then
-        if count > 0 then
-            qtyText:SetText(tostring(ProfitCraft_ShoppingList[count].qty))
-        else
-            qtyText:SetText("-")
-        end
-    end
-
     -- Update each shopping list row
     for i = 1, ProfitCraft_ShoppingListMax do
         local nameFs = getglobal("ProfitCraftShopItem"..i.."Name")
         local qtyFs = getglobal("ProfitCraftShopItem"..i.."Qty")
+        local minusBtn = getglobal("ProfitCraftShopItem"..i.."Minus")
+        local plusBtn = getglobal("ProfitCraftShopItem"..i.."Plus")
         local removeBtn = getglobal("ProfitCraftShopItem"..i.."Remove")
 
-        if nameFs and qtyFs and removeBtn then
+        if nameFs and qtyFs and minusBtn and plusBtn and removeBtn then
             if i <= count then
                 local entry = ProfitCraft_ShoppingList[i]
                 nameFs:SetText("|cFFFFD100" .. entry.recipe.name .. "|r")
-                qtyFs:SetText("|cFFFFFFFFx" .. entry.qty .. "|r")
+                qtyFs:SetText("|cFFFFFFFF" .. entry.qty .. "|r")
+                minusBtn.index = i
+                plusBtn.index = i
+                removeBtn.index = i
                 nameFs:Show()
                 qtyFs:Show()
+                minusBtn:Show()
+                plusBtn:Show()
                 removeBtn:Show()
             else
                 nameFs:Hide()
                 qtyFs:Hide()
+                minusBtn:Hide()
+                plusBtn:Hide()
                 removeBtn:Hide()
             end
         end
     end
 
-    -- Aggregate reagents across all shopping list items
+    -- Show reagent needs per recipe entry instead of one aggregated reagent pool.
     local reagentHeader = getglobal("ProfitCraftReagentHeader")
     if count == 0 then
         if reagentHeader then reagentHeader:Hide() end
-        -- Hide all reagent lines
-        for i = 1, 8 do
+        for i = 1, REAGENT_DISPLAY_LINES do
             local fs = getglobal("ProfitCraftReagentLine"..i)
             if fs then fs:Hide() end
         end
 
-        -- Show placeholder text via the title area
         local titleFs = getglobal("ProfitCraftTrackerTitle")
         if titleFs then titleFs:SetText("Shopping List  |cFF888888(click recipes above to add)|r") end
         return
@@ -696,49 +743,49 @@ function ProfitCraft_UpdateTracker()
     local titleFs = getglobal("ProfitCraftTrackerTitle")
     if titleFs then titleFs:SetText("Shopping List") end
 
-    -- Build aggregated reagent map: { reagentName -> {need=X, have=Y} }
-    local reagentMap = {}
-    local reagentOrder = {}
-
+    local displayLines = {}
     for _, entry in ipairs(ProfitCraft_ShoppingList) do
-        if entry.recipe.reagents then
+        table.insert(displayLines, "|cFFFFD100" .. entry.recipe.name .. " x" .. entry.qty .. "|r")
+
+        local reagentCount = 0
+        if entry.recipe and entry.recipe.reagents then
+            reagentCount = table.getn(entry.recipe.reagents)
+        end
+
+        if reagentCount == 0 then
+            table.insert(displayLines, "  |cFF888888No reagent data|r")
+        else
             for _, r in ipairs(entry.recipe.reagents) do
-                local rName = r.name or "Unknown"
-                if not reagentMap[rName] then
-                    reagentMap[rName] = { need = 0, have = r.playerCount or 0 }
-                    table.insert(reagentOrder, rName)
+                local need = (r.count or 0) * (entry.qty or 1)
+                local have = r.playerCount or 0
+                local color = "|cFFFF4444"
+                if have >= need then
+                    color = "|cFF00FF00"
+                elseif have > 0 then
+                    color = "|cFFFFFF00"
                 end
-                reagentMap[rName].need = reagentMap[rName].need + (r.count * entry.qty)
-                -- Update 'have' to the max we've seen (same reagent, same bag count)
-                local currentHave = r.playerCount or 0
-                if currentHave > reagentMap[rName].have then
-                    reagentMap[rName].have = currentHave
-                end
+                table.insert(displayLines, "  " .. color .. have .. "/" .. need .. "|r  " .. (r.name or "Unknown"))
             end
         end
     end
 
-    if reagentHeader then
-        if table.getn(reagentOrder) > 0 then
-            reagentHeader:Show()
-        else
-            reagentHeader:Hide()
+    local displayedCount = table.getn(displayLines)
+    if displayedCount > REAGENT_DISPLAY_LINES then
+        displayedCount = REAGENT_DISPLAY_LINES
+        if REAGENT_DISPLAY_LINES > 0 then
+            displayLines[REAGENT_DISPLAY_LINES] = "|cFF888888...more reagents not shown|r"
         end
     end
 
-    for i = 1, 8 do
+    if reagentHeader then
+        reagentHeader:Show()
+    end
+
+    for i = 1, REAGENT_DISPLAY_LINES do
         local fs = getglobal("ProfitCraftReagentLine"..i)
         if fs then
-            if reagentOrder[i] then
-                local rName = reagentOrder[i]
-                local info = reagentMap[rName]
-                local color = "|cFFFF4444"
-                if info.have >= info.need then
-                    color = "|cFF00FF00"
-                elseif info.have > 0 then
-                    color = "|cFFFFFF00"
-                end
-                fs:SetText(color .. info.have .. "/" .. info.need .. "|r  " .. rName)
+            if i <= displayedCount and displayLines[i] then
+                fs:SetText(displayLines[i])
                 fs:Show()
             else
                 fs:Hide()
