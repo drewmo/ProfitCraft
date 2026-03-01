@@ -1,41 +1,34 @@
 -- ProfitCraft: dashboard.lua
--- Handles population, sorting, filtering, and display of the Dashboard UI.
--- Also manages the Shopping List tracker.
+-- Dashboard UI: sorting, filtering, multi-item shopping list.
 
 -- ============================================================================
 -- State
 -- ============================================================================
 
--- Master list of ALL recipes (learned + unlearned), populated by main.lua
 ProfitCraft_List = {}
-
--- Filtered view of ProfitCraft_List based on current filter settings
 ProfitCraft_FilteredList = {}
 
--- Current sort state
 ProfitCraft_SortField = "profit"
 ProfitCraft_SortAscending = false
 
--- Filter state (defaults: show learned + unlearned, hide quest-only)
 ProfitCraft_Filters = {
     showLearned = true,
     showUnlearned = true,
     showQuest = true,
 }
 
--- Shopping list tracker state
-ProfitCraft_TrackedRecipe = nil   -- reference to a recipe entry in ProfitCraft_List
-ProfitCraft_TrackedQty = 1
+-- Multi-item shopping list: { {recipe=<data>, qty=1}, ... }
+ProfitCraft_ShoppingList = {}
+ProfitCraft_ShoppingListMax = 4
 
--- Number of visible rows in the scroll area
-local NUM_DISPLAY_ROWS = 13
+local NUM_DISPLAY_ROWS = 11
 
 -- ============================================================================
 -- Currency Formatting
 -- ============================================================================
 
 function ProfitCraft_FormatCurrency(copper)
-    if not copper or copper == 0 then return "|cFF888888-|r" end
+    if not copper or copper == 0 then return "|cFF888888--|r" end
 
     local isNegative = copper < 0
     if isNegative then copper = math.abs(copper) end
@@ -56,9 +49,8 @@ function ProfitCraft_FormatCurrency(copper)
     end
 end
 
--- Shorter version for column display (no color on neutral values)
 function ProfitCraft_FormatCurrencyNeutral(copper)
-    if not copper or copper == 0 then return "|cFF888888-|r" end
+    if not copper or copper == 0 then return "|cFF888888--|r" end
 
     local g = math.floor(copper / 10000)
     local s = math.floor(math.mod(copper / 100, 100))
@@ -73,7 +65,7 @@ function ProfitCraft_FormatCurrencyNeutral(copper)
 end
 
 -- ============================================================================
--- Dashboard OnLoad — create row buttons
+-- Dashboard OnLoad
 -- ============================================================================
 
 function ProfitCraft_Dashboard_OnLoad(frame)
@@ -90,7 +82,7 @@ function ProfitCraft_Dashboard_OnLoad(frame)
         btn:Hide()
     end
 
-    -- Initialize filter checkboxes to default state
+    -- Initialize filter checkboxes
     if ProfitCraftFilterLearned then
         ProfitCraftFilterLearned:SetChecked(true)
     end
@@ -101,23 +93,63 @@ function ProfitCraft_Dashboard_OnLoad(frame)
         ProfitCraftFilterQuest:SetChecked(true)
     end
 
-    -- Create tracker reagent font strings (up to 6 reagent lines)
-    for i = 1, 6 do
-        local fs = frame:CreateFontString("ProfitCraftTrackerReagent"..i, "ARTWORK", "GameFontHighlightSmall")
-        fs:SetJustifyH("LEFT")
+    -- Create shopping list entry rows (up to 4 tracked recipes)
+    for i = 1, ProfitCraft_ShoppingListMax do
+        -- Item name text
+        local nameFs = frame:CreateFontString("ProfitCraftShopItem"..i.."Name", "ARTWORK", "GameFontHighlightSmall")
+        nameFs:SetJustifyH("LEFT")
+        nameFs:SetWidth(300)
+
         if i == 1 then
-            fs:SetPoint("TOPLEFT", ProfitCraftTrackerItemName, "BOTTOMLEFT", 0, -2)
+            nameFs:SetPoint("TOPLEFT", ProfitCraftTrackerTitle, "BOTTOMLEFT", 0, -4)
         else
-            fs:SetPoint("TOPLEFT", "ProfitCraftTrackerReagent"..(i-1), "BOTTOMLEFT", 0, -1)
+            nameFs:SetPoint("TOPLEFT", "ProfitCraftShopItem"..(i-1).."Name", "BOTTOMLEFT", 0, -2)
+        end
+        nameFs:SetText("")
+        nameFs:Hide()
+
+        -- Qty text
+        local qtyFs = frame:CreateFontString("ProfitCraftShopItem"..i.."Qty", "ARTWORK", "GameFontNormalSmall")
+        qtyFs:SetJustifyH("RIGHT")
+        qtyFs:SetPoint("LEFT", nameFs, "RIGHT", 5, 0)
+        qtyFs:SetText("")
+        qtyFs:Hide()
+
+        -- Remove button (small X)
+        local removeBtn = CreateFrame("Button", "ProfitCraftShopItem"..i.."Remove", frame)
+        removeBtn:SetWidth(14)
+        removeBtn:SetHeight(14)
+        removeBtn:SetPoint("LEFT", qtyFs, "RIGHT", 4, 0)
+        removeBtn:SetNormalTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Up")
+        removeBtn:SetHighlightTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Highlight")
+        removeBtn.index = i
+        removeBtn:SetScript("OnClick", function()
+            ProfitCraft_RemoveFromShoppingList(this.index)
+        end)
+        removeBtn:Hide()
+    end
+
+    -- Reagent summary header
+    local reagentHeader = frame:CreateFontString("ProfitCraftReagentHeader", "ARTWORK", "GameFontNormalSmall")
+    reagentHeader:SetJustifyH("LEFT")
+    reagentHeader:SetTextColor(1, 0.82, 0)
+    reagentHeader:SetText("Reagents Needed:")
+    reagentHeader:SetPoint("TOPLEFT", "ProfitCraftShopItem"..ProfitCraft_ShoppingListMax.."Name", "BOTTOMLEFT", 0, -6)
+    reagentHeader:Hide()
+
+    -- Aggregated reagent lines (up to 8)
+    for i = 1, 8 do
+        local fs = frame:CreateFontString("ProfitCraftReagentLine"..i, "ARTWORK", "GameFontHighlightSmall")
+        fs:SetJustifyH("LEFT")
+        fs:SetWidth(400)
+        if i == 1 then
+            fs:SetPoint("TOPLEFT", reagentHeader, "BOTTOMLEFT", 2, -2)
+        else
+            fs:SetPoint("TOPLEFT", "ProfitCraftReagentLine"..(i-1), "BOTTOMLEFT", 0, -1)
         end
         fs:SetText("")
         fs:Hide()
     end
-
-    -- Create quantity display text between - and + buttons
-    local qtyText = frame:CreateFontString("ProfitCraftTrackerQtyText", "ARTWORK", "GameFontNormal")
-    qtyText:SetPoint("LEFT", ProfitCraftTrackerMinus, "RIGHT", 2, 0)
-    qtyText:SetText("1")
 end
 
 -- ============================================================================
@@ -126,18 +158,15 @@ end
 
 function ProfitCraft_SortBy(field)
     if ProfitCraft_SortField == field then
-        -- Toggle direction if clicking the same column
         ProfitCraft_SortAscending = not ProfitCraft_SortAscending
     else
         ProfitCraft_SortField = field
-        -- Default: descending for numeric fields, ascending for name
         if field == "name" then
             ProfitCraft_SortAscending = true
         else
             ProfitCraft_SortAscending = false
         end
     end
-
     ProfitCraft_ApplySortAndFilter()
     ProfitCraft_DashboardUpdate()
 end
@@ -146,11 +175,9 @@ local function SortCompare(a, b)
     local field = ProfitCraft_SortField
     local valA = a[field]
     local valB = b[field]
-
     if valA == nil then valA = 0 end
     if valB == nil then valB = 0 end
 
-    -- For string fields, do alphabetical compare
     if field == "name" then
         if ProfitCraft_SortAscending then
             return (valA or "") < (valB or "")
@@ -159,7 +186,6 @@ local function SortCompare(a, b)
         end
     end
 
-    -- Numeric fields
     if ProfitCraft_SortAscending then
         return valA < valB
     else
@@ -172,45 +198,35 @@ end
 -- ============================================================================
 
 function ProfitCraft_OnFilterChanged()
-    -- Read checkbox states
     ProfitCraft_Filters.showLearned = ProfitCraftFilterLearned:GetChecked() and true or false
     ProfitCraft_Filters.showUnlearned = ProfitCraftFilterUnlearned:GetChecked() and true or false
     ProfitCraft_Filters.showQuest = ProfitCraftFilterQuest:GetChecked() and true or false
-
     ProfitCraft_ApplySortAndFilter()
     ProfitCraft_DashboardUpdate()
 end
 
 function ProfitCraft_ApplySortAndFilter()
     ProfitCraft_FilteredList = {}
-
     for _, entry in ipairs(ProfitCraft_List) do
         local dominated = true
-
-        -- Filter: Learned / Unlearned
         if entry.isLearned and not ProfitCraft_Filters.showLearned then
             dominated = false
         end
         if not entry.isLearned and not ProfitCraft_Filters.showUnlearned then
             dominated = false
         end
-
-        -- Filter: Quest source (only applies to unlearned recipes)
         if not entry.isLearned and entry.source == "Quest" and not ProfitCraft_Filters.showQuest then
             dominated = false
         end
-
         if dominated then
             table.insert(ProfitCraft_FilteredList, entry)
         end
     end
-
-    -- Sort the filtered list
     table.sort(ProfitCraft_FilteredList, SortCompare)
 end
 
 -- ============================================================================
--- Dashboard Update (Scroll Frame refresh)
+-- Dashboard Update
 -- ============================================================================
 
 function ProfitCraft_DashboardUpdate()
@@ -218,14 +234,12 @@ function ProfitCraft_DashboardUpdate()
     if not scrollFrame then return end
 
     local numItems = table.getn(ProfitCraft_FilteredList)
-
     FauxScrollFrame_Update(scrollFrame, numItems, NUM_DISPLAY_ROWS, 22)
 
     local offset = FauxScrollFrame_GetOffset(scrollFrame)
     for i = 1, NUM_DISPLAY_ROWS do
         local index = offset + i
         local button = getglobal("ProfitCraftDashboardEntry"..i)
-
         if button then
             if index <= numItems then
                 local data = ProfitCraft_FilteredList[index]
@@ -234,15 +248,13 @@ function ProfitCraft_DashboardUpdate()
                 local statusText = getglobal("ProfitCraftDashboardEntry"..i.."Status")
                 if data.isLearned then
                     statusText:SetText("|cFF00FF00*|r")
+                elseif data.source == "Quest" then
+                    statusText:SetText("|cFFFFFF00!|r")
                 else
-                    if data.source == "Quest" then
-                        statusText:SetText("|cFFFFFF00!|r")
-                    else
-                        statusText:SetText("|cFFFF8800?|r")
-                    end
+                    statusText:SetText("|cFFFF8800?|r")
                 end
 
-                -- Recipe name
+                -- Name (dimmed for unlearned)
                 local nameText = getglobal("ProfitCraftDashboardEntry"..i.."Name")
                 if data.isLearned then
                     nameText:SetText(data.name)
@@ -250,16 +262,22 @@ function ProfitCraft_DashboardUpdate()
                     nameText:SetText("|cFFAAAAAA" .. data.name .. "|r")
                 end
 
-                -- Cost, Value, Profit columns
+                -- Columns
                 getglobal("ProfitCraftDashboardEntry"..i.."Cost"):SetText(ProfitCraft_FormatCurrencyNeutral(data.cost))
                 getglobal("ProfitCraftDashboardEntry"..i.."Value"):SetText(ProfitCraft_FormatCurrencyNeutral(data.marketValue))
                 getglobal("ProfitCraftDashboardEntry"..i.."Profit"):SetText(ProfitCraft_FormatCurrency(data.profit))
 
-                -- Store the data index on the button for click handling
                 button.dataIndex = index
 
-                -- Highlight the tracked recipe
-                if ProfitCraft_TrackedRecipe and data.name == ProfitCraft_TrackedRecipe.name then
+                -- Highlight items in shopping list
+                local inList = false
+                for _, entry in ipairs(ProfitCraft_ShoppingList) do
+                    if entry.recipe and entry.recipe.name == data.name then
+                        inList = true
+                        break
+                    end
+                end
+                if inList then
                     button:LockHighlight()
                 else
                     button:UnlockHighlight()
@@ -274,7 +292,7 @@ function ProfitCraft_DashboardUpdate()
 end
 
 -- ============================================================================
--- Entry Click / Hover Handlers
+-- Entry Click / Hover
 -- ============================================================================
 
 function ProfitCraft_OnEntryClick(btn)
@@ -282,9 +300,28 @@ function ProfitCraft_OnEntryClick(btn)
     local data = ProfitCraft_FilteredList[btn.dataIndex]
     if not data then return end
 
-    -- Set as tracked recipe for shopping list
-    ProfitCraft_TrackedRecipe = data
-    ProfitCraft_TrackedQty = 1
+    -- Check if already in the shopping list
+    for idx, entry in ipairs(ProfitCraft_ShoppingList) do
+        if entry.recipe and entry.recipe.name == data.name then
+            -- Increment quantity instead of adding a duplicate
+            entry.qty = entry.qty + 1
+            if entry.qty > 99 then entry.qty = 99 end
+            ProfitCraft_UpdateTracker()
+            ProfitCraft_DashboardUpdate()
+            return
+        end
+    end
+
+    -- Add new entry if there's room
+    if table.getn(ProfitCraft_ShoppingList) >= ProfitCraft_ShoppingListMax then
+        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF8800[ProfitCraft]|r Shopping list full (max " .. ProfitCraft_ShoppingListMax .. "). Remove an item first.")
+        return
+    end
+
+    table.insert(ProfitCraft_ShoppingList, {
+        recipe = data,
+        qty = 1,
+    })
 
     ProfitCraft_UpdateTracker()
     ProfitCraft_DashboardUpdate()
@@ -297,20 +334,17 @@ function ProfitCraft_OnEntryEnter(btn)
 
     GameTooltip:SetOwner(btn, "ANCHOR_RIGHT")
 
-    -- Show item tooltip if we have a link
     if data.itemLink then
         GameTooltip:SetHyperlink(data.itemLink)
     else
         GameTooltip:AddLine(data.name, 1, 1, 1)
     end
 
-    -- Add profit info
     GameTooltip:AddLine(" ")
     GameTooltip:AddDoubleLine("Market Value:", ProfitCraft_FormatCurrencyNeutral(data.marketValue), 0.7, 0.7, 0.7)
     GameTooltip:AddDoubleLine("Craft Cost:", ProfitCraft_FormatCurrencyNeutral(data.cost), 0.7, 0.7, 0.7)
     GameTooltip:AddDoubleLine("Profit:", ProfitCraft_FormatCurrency(data.profit), 0.7, 0.7, 0.7)
 
-    -- Show source for unlearned recipes
     if not data.isLearned then
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine("Source: " .. (data.source or "Unknown"), 1, 0.8, 0)
@@ -319,7 +353,6 @@ function ProfitCraft_OnEntryEnter(btn)
         end
     end
 
-    -- Show reagent list
     if data.reagents and table.getn(data.reagents) > 0 then
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine("Reagents:", 1, 0.82, 0)
@@ -338,74 +371,134 @@ function ProfitCraft_OnEntryEnter(btn)
 end
 
 -- ============================================================================
--- Shopping List Tracker
+-- Multi-Item Shopping List
 -- ============================================================================
 
+function ProfitCraft_RemoveFromShoppingList(index)
+    if ProfitCraft_ShoppingList[index] then
+        table.remove(ProfitCraft_ShoppingList, index)
+        -- Re-index remove buttons
+        for i = 1, ProfitCraft_ShoppingListMax do
+            local rb = getglobal("ProfitCraftShopItem"..i.."Remove")
+            if rb then rb.index = i end
+        end
+        ProfitCraft_UpdateTracker()
+        ProfitCraft_DashboardUpdate()
+    end
+end
+
 function ProfitCraft_TrackerAdjustQty(delta)
-    ProfitCraft_TrackedQty = ProfitCraft_TrackedQty + delta
-    if ProfitCraft_TrackedQty < 1 then ProfitCraft_TrackedQty = 1 end
-    if ProfitCraft_TrackedQty > 99 then ProfitCraft_TrackedQty = 99 end
+    -- Apply to the LAST added item in the shopping list
+    local count = table.getn(ProfitCraft_ShoppingList)
+    if count == 0 then return end
+
+    local entry = ProfitCraft_ShoppingList[count]
+    entry.qty = entry.qty + delta
+    if entry.qty < 1 then entry.qty = 1 end
+    if entry.qty > 99 then entry.qty = 99 end
 
     ProfitCraft_UpdateTracker()
 end
 
 function ProfitCraft_UpdateTracker()
+    local count = table.getn(ProfitCraft_ShoppingList)
+
+    -- Update qty display on the +/- buttons area
     local qtyText = getglobal("ProfitCraftTrackerQtyText")
     if qtyText then
-        qtyText:SetText(tostring(ProfitCraft_TrackedQty))
+        if count > 0 then
+            qtyText:SetText(tostring(ProfitCraft_ShoppingList[count].qty))
+        else
+            qtyText:SetText("-")
+        end
     end
 
-    local itemNameText = getglobal("ProfitCraftTrackerItemName")
-    if not itemNameText then return end
+    -- Update each shopping list row
+    for i = 1, ProfitCraft_ShoppingListMax do
+        local nameFs = getglobal("ProfitCraftShopItem"..i.."Name")
+        local qtyFs = getglobal("ProfitCraftShopItem"..i.."Qty")
+        local removeBtn = getglobal("ProfitCraftShopItem"..i.."Remove")
 
-    if not ProfitCraft_TrackedRecipe then
-        itemNameText:SetText("|cFF888888Click a recipe above to track|r")
+        if nameFs and qtyFs and removeBtn then
+            if i <= count then
+                local entry = ProfitCraft_ShoppingList[i]
+                nameFs:SetText("|cFFFFD100" .. entry.recipe.name .. "|r")
+                qtyFs:SetText("|cFFFFFFFFx" .. entry.qty .. "|r")
+                nameFs:Show()
+                qtyFs:Show()
+                removeBtn:Show()
+            else
+                nameFs:Hide()
+                qtyFs:Hide()
+                removeBtn:Hide()
+            end
+        end
+    end
+
+    -- Aggregate reagents across all shopping list items
+    local reagentHeader = getglobal("ProfitCraftReagentHeader")
+    if count == 0 then
+        if reagentHeader then reagentHeader:Hide() end
         -- Hide all reagent lines
-        for i = 1, 6 do
-            local fs = getglobal("ProfitCraftTrackerReagent"..i)
+        for i = 1, 8 do
+            local fs = getglobal("ProfitCraftReagentLine"..i)
             if fs then fs:Hide() end
         end
+
+        -- Show placeholder text via the title area
+        local titleFs = getglobal("ProfitCraftTrackerTitle")
+        if titleFs then titleFs:SetText("Shopping List  |cFF888888(click recipes above to add)|r") end
         return
     end
 
-    local recipe = ProfitCraft_TrackedRecipe
-    local qty = ProfitCraft_TrackedQty
+    local titleFs = getglobal("ProfitCraftTrackerTitle")
+    if titleFs then titleFs:SetText("Shopping List") end
 
-    -- Show tracked item name
-    local displayName = recipe.name
-    if qty > 1 then
-        displayName = displayName .. " x" .. qty
-    end
-    itemNameText:SetText("|cFFFFD100" .. displayName .. "|r")
+    -- Build aggregated reagent map: { reagentName -> {need=X, have=Y} }
+    local reagentMap = {}
+    local reagentOrder = {}
 
-    -- Show reagent progress
-    if recipe.reagents then
-        for i = 1, 6 do
-            local fs = getglobal("ProfitCraftTrackerReagent"..i)
-            if fs then
-                if recipe.reagents[i] then
-                    local r = recipe.reagents[i]
-                    local have = r.playerCount or 0
-                    local need = (r.count or 0) * qty
-                    local color = "|cFFFF4444"
-                    if have >= need then
-                        color = "|cFF00FF00"
-                    elseif have > 0 then
-                        color = "|cFFFFFF00"
-                    end
-                    fs:SetText(color .. have .. "/" .. need .. "|r  " .. (r.name or "Unknown"))
-                    fs:Show()
-                else
-                    fs:SetText("")
-                    fs:Hide()
+    for _, entry in ipairs(ProfitCraft_ShoppingList) do
+        if entry.recipe.reagents then
+            for _, r in ipairs(entry.recipe.reagents) do
+                local rName = r.name or "Unknown"
+                if not reagentMap[rName] then
+                    reagentMap[rName] = { need = 0, have = r.playerCount or 0 }
+                    table.insert(reagentOrder, rName)
+                end
+                reagentMap[rName].need = reagentMap[rName].need + (r.count * entry.qty)
+                -- Update 'have' to the max we've seen (same reagent, same bag count)
+                local currentHave = r.playerCount or 0
+                if currentHave > reagentMap[rName].have then
+                    reagentMap[rName].have = currentHave
                 end
             end
         end
-    else
-        for i = 1, 6 do
-            local fs = getglobal("ProfitCraftTrackerReagent"..i)
-            if fs then
-                fs:SetText("")
+    end
+
+    if reagentHeader then
+        if table.getn(reagentOrder) > 0 then
+            reagentHeader:Show()
+        else
+            reagentHeader:Hide()
+        end
+    end
+
+    for i = 1, 8 do
+        local fs = getglobal("ProfitCraftReagentLine"..i)
+        if fs then
+            if reagentOrder[i] then
+                local rName = reagentOrder[i]
+                local info = reagentMap[rName]
+                local color = "|cFFFF4444"
+                if info.have >= info.need then
+                    color = "|cFF00FF00"
+                elseif info.have > 0 then
+                    color = "|cFFFFFF00"
+                end
+                fs:SetText(color .. info.have .. "/" .. info.need .. "|r  " .. rName)
+                fs:Show()
+            else
                 fs:Hide()
             end
         end
@@ -413,12 +506,12 @@ function ProfitCraft_UpdateTracker()
 end
 
 -- ============================================================================
--- Toggle Dashboard visibility
+-- Toggle Dashboard
 -- ============================================================================
 
 function ProfitCraft_ToggleDashboard()
     if not ProfitCraftDashboard then
-        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF0000[ProfitCraft] Error:|r Dashboard UI frame is missing.")
+        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF0000[ProfitCraft] Error:|r Dashboard frame is missing.")
         return
     end
 

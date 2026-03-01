@@ -1,13 +1,12 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
 
-    <!-- Entry Template: 4-column row (Name, Cost, Value, Profit) -->
+    <!-- Entry Template: 4-column row (Status, Name, Cost, Value, Profit) -->
     <Button name="ProfitCraftEntryTemplate" virtual="true">
         <Size>
             <AbsDimension x="545" y="22"/>
         </Size>
         <Layers>
             <Layer level="BORDER">
-                <!-- Status indicator (learned/unlearned dot) -->
                 <FontString name="$parentStatus" inherits="GameFontNormalSmall" justifyH="CENTER" text="">
                     <Size>
                         <AbsDimension x="14" y="22"/>
@@ -20,7 +19,6 @@
                         </Anchor>
                     </Anchors>
                 </FontString>
-                <!-- Recipe Name -->
                 <FontString name="$parentName" inherits="GameFontNormal" justifyH="LEFT" text="">
                     <Size>
                         <AbsDimension x="220" y="22"/>
@@ -33,7 +31,6 @@
                         </Anchor>
                     </Anchors>
                 </FontString>
-                <!-- Craft Cost -->
                 <FontString name="$parentCost" inherits="GameFontHighlightSmall" justifyH="RIGHT" text="">
                     <Size>
                         <AbsDimension x="110" y="22"/>
@@ -46,7 +43,6 @@
                         </Anchor>
                     </Anchors>
                 </FontString>
-                <!-- Market Value -->
                 <FontString name="$parentValue" inherits="GameFontHighlightSmall" justifyH="RIGHT" text="">
                     <Size>
                         <AbsDimension x="110" y="22"/>
@@ -59,7 +55,6 @@
                         </Anchor>
                     </Anchors>
                 </FontString>
-                <!-- Profit -->
                 <FontString name="$parentProfit" inherits="GameFontHighlightSmall" justifyH="RIGHT" text="">
                     <Size>
                         <AbsDimension x="90" y="22"/>
@@ -91,7 +86,7 @@
     <!-- Main Dashboard Frame -->
     <Frame name="ProfitCraftDashboard" parent="UIParent" hidden="true" toplevel="true" enableMouse="true" movable="true">
         <Size>
-            <AbsDimension x="620" y="520" />
+            <AbsDimension x="620" y="580" />
         </Size>
         <Anchors>
             <Anchor point="CENTER" />
@@ -147,23 +142,23 @@
                 </Anchors>
             </Button>
 
-            <!-- Filter Bar -->
+            <!-- ============ Filter Bar ============ -->
             <Frame name="ProfitCraftFilterBar">
                 <Size>
-                    <AbsDimension x="570" y="24" />
+                    <AbsDimension x="550" y="26" />
                 </Size>
                 <Anchors>
                     <Anchor point="TOPLEFT" relativeTo="ProfitCraftDashboard">
                         <Offset>
-                            <AbsDimension x="20" y="-30" />
+                            <AbsDimension x="24" y="-28" />
                         </Offset>
                     </Anchor>
                 </Anchors>
                 <Frames>
-                    <!-- Learned checkbox -->
+                    <!-- Learned -->
                     <CheckButton name="ProfitCraftFilterLearned" inherits="UICheckButtonTemplate">
                         <Size>
-                            <AbsDimension x="20" y="20"/>
+                            <AbsDimension x="24" y="24"/>
                         </Size>
                         <Anchors>
                             <Anchor point="LEFT">
@@ -178,15 +173,15 @@
                             </OnClick>
                         </Scripts>
                     </CheckButton>
-                    <!-- Unlearned checkbox -->
+                    <!-- Unlearned -->
                     <CheckButton name="ProfitCraftFilterUnlearned" inherits="UICheckButtonTemplate">
                         <Size>
-                            <AbsDimension x="20" y="20"/>
+                            <AbsDimension x="24" y="24"/>
                         </Size>
                         <Anchors>
                             <Anchor point="LEFT" relativeTo="ProfitCraftFilterLearned" relativePoint="RIGHT">
                                 <Offset>
-                                    <AbsDimension x="60" y="0"/>
+                                    <AbsDimension x="62" y="0"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -196,15 +191,15 @@
                             </OnClick>
                         </Scripts>
                     </CheckButton>
-                    <!-- Quest checkbox -->
+                    <!-- Quest -->
                     <CheckButton name="ProfitCraftFilterQuest" inherits="UICheckButtonTemplate">
                         <Size>
-                            <AbsDimension x="20" y="20"/>
+                            <AbsDimension x="24" y="24"/>
                         </Size>
                         <Anchors>
                             <Anchor point="LEFT" relativeTo="ProfitCraftFilterUnlearned" relativePoint="RIGHT">
                                 <Offset>
-                                    <AbsDimension x="72" y="0"/>
+                                    <AbsDimension x="74" y="0"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -221,7 +216,7 @@
                             <Anchors>
                                 <Anchor point="LEFT" relativeTo="ProfitCraftFilterLearned" relativePoint="RIGHT">
                                     <Offset>
-                                        <AbsDimension x="0" y="1"/>
+                                        <AbsDimension x="2" y="0"/>
                                     </Offset>
                                 </Anchor>
                             </Anchors>
@@ -230,7 +225,7 @@
                             <Anchors>
                                 <Anchor point="LEFT" relativeTo="ProfitCraftFilterUnlearned" relativePoint="RIGHT">
                                     <Offset>
-                                        <AbsDimension x="0" y="1"/>
+                                        <AbsDimension x="2" y="0"/>
                                     </Offset>
                                 </Anchor>
                             </Anchors>
@@ -239,7 +234,7 @@
                             <Anchors>
                                 <Anchor point="LEFT" relativeTo="ProfitCraftFilterQuest" relativePoint="RIGHT">
                                     <Offset>
-                                        <AbsDimension x="0" y="1"/>
+                                        <AbsDimension x="2" y="0"/>
                                     </Offset>
                                 </Anchor>
                             </Anchors>
@@ -248,22 +243,22 @@
                 </Layers>
             </Frame>
 
-            <!-- Column Headers -->
+            <!-- ============ Column Headers ============ -->
             <Frame name="ProfitCraftColumnHeaders">
                 <Size>
-                    <AbsDimension x="570" y="20"/>
+                    <AbsDimension x="560" y="18"/>
                 </Size>
                 <Anchors>
                     <Anchor point="TOPLEFT" relativeTo="ProfitCraftDashboard">
                         <Offset>
-                            <AbsDimension x="20" y="-56"/>
+                            <AbsDimension x="22" y="-56"/>
                         </Offset>
                     </Anchor>
                 </Anchors>
                 <Frames>
                     <Button name="ProfitCraftHeaderName">
                         <Size>
-                            <AbsDimension x="236" y="20"/>
+                            <AbsDimension x="236" y="18"/>
                         </Size>
                         <Anchors>
                             <Anchor point="LEFT">
@@ -282,7 +277,7 @@
                     </Button>
                     <Button name="ProfitCraftHeaderCost">
                         <Size>
-                            <AbsDimension x="112" y="20"/>
+                            <AbsDimension x="112" y="18"/>
                         </Size>
                         <Anchors>
                             <Anchor point="LEFT" relativeTo="ProfitCraftHeaderName" relativePoint="RIGHT"/>
@@ -297,7 +292,7 @@
                     </Button>
                     <Button name="ProfitCraftHeaderValue">
                         <Size>
-                            <AbsDimension x="112" y="20"/>
+                            <AbsDimension x="112" y="18"/>
                         </Size>
                         <Anchors>
                             <Anchor point="LEFT" relativeTo="ProfitCraftHeaderCost" relativePoint="RIGHT"/>
@@ -312,7 +307,7 @@
                     </Button>
                     <Button name="ProfitCraftHeaderProfit">
                         <Size>
-                            <AbsDimension x="92" y="20"/>
+                            <AbsDimension x="92" y="18"/>
                         </Size>
                         <Anchors>
                             <Anchor point="LEFT" relativeTo="ProfitCraftHeaderValue" relativePoint="RIGHT"/>
@@ -326,24 +321,17 @@
                         </Scripts>
                     </Button>
                 </Frames>
-                <Layers>
-                    <Layer level="BACKGROUND">
-                        <Texture>
-                            <Color r="0" g="0" b="0" a="0.3"/>
-                        </Texture>
-                    </Layer>
-                </Layers>
             </Frame>
 
-            <!-- Scrollable List Area -->
+            <!-- ============ Scrollable List ============ -->
             <ScrollFrame name="ProfitCraftDashboardScrollFrame" inherits="FauxScrollFrameTemplate">
                 <Size>
-                    <AbsDimension x="555" y="286"/>
+                    <AbsDimension x="555" y="242"/>
                 </Size>
                 <Anchors>
                     <Anchor point="TOPLEFT" relativeTo="ProfitCraftDashboard">
                         <Offset>
-                            <AbsDimension x="20" y="-78"/>
+                            <AbsDimension x="22" y="-76"/>
                         </Offset>
                     </Anchor>
                 </Anchors>
@@ -354,7 +342,7 @@
                 </Scripts>
             </ScrollFrame>
 
-            <!-- Separator line above shopping list -->
+            <!-- ============ Separator ============ -->
             <Frame name="ProfitCraftSeparator">
                 <Size>
                     <AbsDimension x="570" y="2"/>
@@ -362,7 +350,7 @@
                 <Anchors>
                     <Anchor point="TOPLEFT" relativeTo="ProfitCraftDashboard">
                         <Offset>
-                            <AbsDimension x="20" y="-370"/>
+                            <AbsDimension x="22" y="-324"/>
                         </Offset>
                     </Anchor>
                 </Anchors>
@@ -375,15 +363,15 @@
                 </Layers>
             </Frame>
 
-            <!-- Shopping List Tracker -->
+            <!-- ============ Shopping List Tracker ============ -->
             <Frame name="ProfitCraftTracker">
                 <Size>
-                    <AbsDimension x="570" y="120" />
+                    <AbsDimension x="570" y="220" />
                 </Size>
                 <Anchors>
                     <Anchor point="TOPLEFT" relativeTo="ProfitCraftDashboard">
                         <Offset>
-                            <AbsDimension x="20" y="-376"/>
+                            <AbsDimension x="22" y="-330"/>
                         </Offset>
                     </Anchor>
                 </Anchors>
@@ -398,22 +386,9 @@
                                 </Anchor>
                             </Anchors>
                         </FontString>
-                        <FontString name="ProfitCraftTrackerItemName" inherits="GameFontHighlight" text="Click a recipe above to track" justifyH="LEFT">
-                            <Size>
-                                <AbsDimension x="300" y="16"/>
-                            </Size>
-                            <Anchors>
-                                <Anchor point="TOPLEFT">
-                                    <Offset>
-                                        <AbsDimension x="0" y="-18"/>
-                                    </Offset>
-                                </Anchor>
-                            </Anchors>
-                        </FontString>
                     </Layer>
                 </Layers>
                 <Frames>
-                    <!-- Quantity controls -->
                     <Button name="ProfitCraftTrackerMinus">
                         <Size>
                             <AbsDimension x="22" y="22"/>
