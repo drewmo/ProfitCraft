@@ -114,8 +114,8 @@
                 </Scripts>
             </ScrollFrame>
             
-            <!-- Shopping List / Reagent Tracker UI will go below -->
-            <Frame name="$parentTracker" inherits="OptionFrameBoxTemplate">
+            <!-- Shopping List / Reagent tracker UI will go below -->
+            <Frame name="$parentTracker">
                 <Size>
                     <AbsDimension x="550" y="50" />
                 </Size>

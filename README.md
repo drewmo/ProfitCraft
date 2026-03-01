@@ -21,3 +21,9 @@ It calculates and displays the most profitable items to craft based on your curr
 
 ## Contributing
 This addon is fully open-sourced. Any Pull Requests to improve the internal Recipe Database, UI, or calculation logic are welcome!
+
+### Versioning
+Turtle WoW launchers rely on the `.toc` file to pull automatic updates. Every time a functional change is pushed to this repository, you **MUST** increment the `## Version: x.x.x` tag inside `ProfitCraft.toc`.
+* **Major (`1.x.x`)**: Complete UI overhauls or structural shifts.
+* **Minor (`x.1.x`)**: New features (e.g., adding a Shopping List tracker, adding new profession databases).
+* **Patch (`x.x.1`)**: Bug fixes or small database corrections.
