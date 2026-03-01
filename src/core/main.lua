@@ -115,10 +115,10 @@ function ProfitCraft_CalculateProfits()
     -- Sort list by profit highest -> lowest
     table.sort(ProfitCraft_List, function(a, b) return a.profit > b.profit end)
     
-    -- Update UI if it's open
-    if ProfitCraftDashboard and ProfitCraftDashboard:IsVisible() then
-        ProfitCraft_DashboardUpdate()
-    else
+    -- Update UI
+    if not ProfitCraftDashboard:IsVisible() then
         ProfitCraft_ToggleDashboard() -- Auto open for testing purposes
+    else
+        ProfitCraft_DashboardUpdate()
     end
 end

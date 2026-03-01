@@ -90,7 +90,7 @@
                     <Anchor point="TOPRIGHT">
                         <Offset>
                             <AbsDimension x="-3" y="-3" />
-                        </Anchor>
+                        </Offset>
                     </Anchor>
                 </Anchors>
             </Button>
