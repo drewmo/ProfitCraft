@@ -142,6 +142,233 @@
                 </Anchors>
             </Button>
 
+            <Button name="ProfitCraftSettingsToggle">
+                <Size>
+                    <AbsDimension x="92" y="18"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPRIGHT" relativeTo="ProfitCraftDashboard">
+                        <Offset>
+                            <AbsDimension x="-36" y="-30"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <NormalTexture file="Interface\FriendsFrame\WhoFrame-ColumnHead"/>
+                <HighlightTexture file="Interface\PaperDollInfoFrame\UI-Character-Tab-Highlight" alphaMode="ADD"/>
+                <NormalFont inherits="GameFontHighlightSmall"/>
+                <NormalText text="Settings"/>
+                <Scripts>
+                    <OnClick>ProfitCraft_ToggleSettings();</OnClick>
+                </Scripts>
+            </Button>
+
+            <Frame name="ProfitCraftSettingsPanel" hidden="true" enableMouse="true">
+                <Size>
+                    <AbsDimension x="250" y="176"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPRIGHT" relativeTo="ProfitCraftDashboard">
+                        <Offset>
+                            <AbsDimension x="-24" y="-52"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Backdrop bgFile="Interface\Tooltips\UI-Tooltip-Background" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+                    <BackgroundInsets>
+                        <AbsInset left="3" right="3" top="3" bottom="3"/>
+                    </BackgroundInsets>
+                    <TileSize>
+                        <AbsValue val="16"/>
+                    </TileSize>
+                    <EdgeSize>
+                        <AbsValue val="12"/>
+                    </EdgeSize>
+                </Backdrop>
+                <Layers>
+                    <Layer level="OVERLAY">
+                        <FontString name="ProfitCraftSettingsTitle" inherits="GameFontNormalSmall" text="Settings" justifyH="LEFT">
+                            <Anchors>
+                                <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
+                                    <Offset>
+                                        <AbsDimension x="10" y="-10"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                        <FontString name="ProfitCraftSettingShowQuestText" inherits="GameFontNormalSmall" text="Show Quest Unlearned" justifyH="LEFT">
+                            <Anchors>
+                                <Anchor point="LEFT" relativeTo="ProfitCraftSettingShowQuest" relativePoint="RIGHT">
+                                    <Offset>
+                                        <AbsDimension x="2" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                        <FontString name="ProfitCraftSettingShowTrainerText" inherits="GameFontNormalSmall" text="Show Trainer Unlearned" justifyH="LEFT">
+                            <Anchors>
+                                <Anchor point="LEFT" relativeTo="ProfitCraftSettingShowTrainer" relativePoint="RIGHT">
+                                    <Offset>
+                                        <AbsDimension x="2" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                        <FontString name="ProfitCraftSettingShowVendorText" inherits="GameFontNormalSmall" text="Show Vendor Unlearned" justifyH="LEFT">
+                            <Anchors>
+                                <Anchor point="LEFT" relativeTo="ProfitCraftSettingShowVendor" relativePoint="RIGHT">
+                                    <Offset>
+                                        <AbsDimension x="2" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                        <FontString name="ProfitCraftSettingShowDropText" inherits="GameFontNormalSmall" text="Show Drop Unlearned" justifyH="LEFT">
+                            <Anchors>
+                                <Anchor point="LEFT" relativeTo="ProfitCraftSettingShowDrop" relativePoint="RIGHT">
+                                    <Offset>
+                                        <AbsDimension x="2" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                        <FontString name="ProfitCraftSettingAutoMerchantText" inherits="GameFontNormalSmall" text="Open at Vendors" justifyH="LEFT">
+                            <Anchors>
+                                <Anchor point="LEFT" relativeTo="ProfitCraftSettingAutoMerchant" relativePoint="RIGHT">
+                                    <Offset>
+                                        <AbsDimension x="2" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                        <FontString name="ProfitCraftSettingAutoAuctionText" inherits="GameFontNormalSmall" text="Open at Auction House" justifyH="LEFT">
+                            <Anchors>
+                                <Anchor point="LEFT" relativeTo="ProfitCraftSettingAutoAuction" relativePoint="RIGHT">
+                                    <Offset>
+                                        <AbsDimension x="2" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                        <FontString name="ProfitCraftSettingAutoShoppingOnlyText" inherits="GameFontNormalSmall" text="Use Shopping-Only on Auto Open" justifyH="LEFT">
+                            <Anchors>
+                                <Anchor point="LEFT" relativeTo="ProfitCraftSettingAutoShoppingOnly" relativePoint="RIGHT">
+                                    <Offset>
+                                        <AbsDimension x="2" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                    </Layer>
+                </Layers>
+                <Frames>
+                    <CheckButton name="ProfitCraftSettingShowQuest" inherits="UICheckButtonTemplate">
+                        <Size>
+                            <AbsDimension x="24" y="24"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
+                                <Offset>
+                                    <AbsDimension x="8" y="-24"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>ProfitCraft_OnSettingToggle("showQuest");</OnClick>
+                        </Scripts>
+                    </CheckButton>
+                    <CheckButton name="ProfitCraftSettingShowTrainer" inherits="UICheckButtonTemplate">
+                        <Size>
+                            <AbsDimension x="24" y="24"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
+                                <Offset>
+                                    <AbsDimension x="8" y="-44"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>ProfitCraft_OnSettingToggle("showTrainer");</OnClick>
+                        </Scripts>
+                    </CheckButton>
+                    <CheckButton name="ProfitCraftSettingShowVendor" inherits="UICheckButtonTemplate">
+                        <Size>
+                            <AbsDimension x="24" y="24"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
+                                <Offset>
+                                    <AbsDimension x="8" y="-64"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>ProfitCraft_OnSettingToggle("showVendor");</OnClick>
+                        </Scripts>
+                    </CheckButton>
+                    <CheckButton name="ProfitCraftSettingShowDrop" inherits="UICheckButtonTemplate">
+                        <Size>
+                            <AbsDimension x="24" y="24"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
+                                <Offset>
+                                    <AbsDimension x="8" y="-84"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>ProfitCraft_OnSettingToggle("showDrop");</OnClick>
+                        </Scripts>
+                    </CheckButton>
+                    <CheckButton name="ProfitCraftSettingAutoMerchant" inherits="UICheckButtonTemplate">
+                        <Size>
+                            <AbsDimension x="24" y="24"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
+                                <Offset>
+                                    <AbsDimension x="8" y="-104"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>ProfitCraft_OnSettingToggle("autoOpenMerchant");</OnClick>
+                        </Scripts>
+                    </CheckButton>
+                    <CheckButton name="ProfitCraftSettingAutoAuction" inherits="UICheckButtonTemplate">
+                        <Size>
+                            <AbsDimension x="24" y="24"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
+                                <Offset>
+                                    <AbsDimension x="8" y="-124"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>ProfitCraft_OnSettingToggle("autoOpenAuction");</OnClick>
+                        </Scripts>
+                    </CheckButton>
+                    <CheckButton name="ProfitCraftSettingAutoShoppingOnly" inherits="UICheckButtonTemplate">
+                        <Size>
+                            <AbsDimension x="24" y="24"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
+                                <Offset>
+                                    <AbsDimension x="8" y="-144"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>ProfitCraft_OnSettingToggle("autoOpenShoppingOnly");</OnClick>
+                        </Scripts>
+                    </CheckButton>
+                </Frames>
+            </Frame>
+
             <!-- ============ Filter Bar ============ -->
             <Frame name="ProfitCraftFilterBar">
                 <Size>
@@ -155,15 +382,15 @@
                     </Anchor>
                 </Anchors>
                 <Frames>
-                    <!-- Learned -->
+                    <!-- Learned checkbox at x=0 -->
                     <CheckButton name="ProfitCraftFilterLearned" inherits="UICheckButtonTemplate">
                         <Size>
                             <AbsDimension x="24" y="24"/>
                         </Size>
                         <Anchors>
-                            <Anchor point="LEFT">
+                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
                                 <Offset>
-                                    <AbsDimension x="0" y="0"/>
+                                    <AbsDimension x="0" y="-1"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -173,15 +400,15 @@
                             </OnClick>
                         </Scripts>
                     </CheckButton>
-                    <!-- Unlearned -->
+                    <!-- Unlearned checkbox at x=130 -->
                     <CheckButton name="ProfitCraftFilterUnlearned" inherits="UICheckButtonTemplate">
                         <Size>
                             <AbsDimension x="24" y="24"/>
                         </Size>
                         <Anchors>
-                            <Anchor point="LEFT" relativeTo="ProfitCraftFilterLearned" relativePoint="RIGHT">
+                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
                                 <Offset>
-                                    <AbsDimension x="62" y="0"/>
+                                    <AbsDimension x="130" y="-1"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -191,15 +418,33 @@
                             </OnClick>
                         </Scripts>
                     </CheckButton>
-                    <!-- Quest -->
+                    <!-- Quest checkbox at x=280 -->
                     <CheckButton name="ProfitCraftFilterQuest" inherits="UICheckButtonTemplate">
                         <Size>
                             <AbsDimension x="24" y="24"/>
                         </Size>
                         <Anchors>
-                            <Anchor point="LEFT" relativeTo="ProfitCraftFilterUnlearned" relativePoint="RIGHT">
+                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
                                 <Offset>
-                                    <AbsDimension x="74" y="0"/>
+                                    <AbsDimension x="280" y="-1"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>
+                                ProfitCraft_OnFilterChanged();
+                            </OnClick>
+                        </Scripts>
+                    </CheckButton>
+                    <!-- Shopping-only checkbox at x=380 -->
+                    <CheckButton name="ProfitCraftFilterShoppingOnly" inherits="UICheckButtonTemplate">
+                        <Size>
+                            <AbsDimension x="24" y="24"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
+                                <Offset>
+                                    <AbsDimension x="380" y="-1"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -212,6 +457,7 @@
                 </Frames>
                 <Layers>
                     <Layer level="OVERLAY">
+                        <!-- Labels anchored to each checkbox to avoid drift -->
                         <FontString name="ProfitCraftFilterLearnedText" inherits="GameFontNormalSmall" text="Learned" justifyH="LEFT">
                             <Anchors>
                                 <Anchor point="LEFT" relativeTo="ProfitCraftFilterLearned" relativePoint="RIGHT">
@@ -233,6 +479,15 @@
                         <FontString name="ProfitCraftFilterQuestText" inherits="GameFontNormalSmall" text="Quest" justifyH="LEFT">
                             <Anchors>
                                 <Anchor point="LEFT" relativeTo="ProfitCraftFilterQuest" relativePoint="RIGHT">
+                                    <Offset>
+                                        <AbsDimension x="2" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                        <FontString name="ProfitCraftFilterShoppingOnlyText" inherits="GameFontNormalSmall" text="Shopping Only" justifyH="LEFT">
+                            <Anchors>
+                                <Anchor point="LEFT" relativeTo="ProfitCraftFilterShoppingOnly" relativePoint="RIGHT">
                                     <Offset>
                                         <AbsDimension x="2" y="0"/>
                                     </Offset>

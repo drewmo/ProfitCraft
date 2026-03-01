@@ -15,6 +15,10 @@ ProfitCraft_Filters = {
     showLearned = true,
     showUnlearned = true,
     showQuest = true,
+    showTrainer = true,
+    showVendor = true,
+    showDrop = true,
+    showShoppingOnly = false,
 }
 
 -- Multi-item shopping list: { {recipe=<data>, qty=1}, ... }
@@ -22,6 +26,36 @@ ProfitCraft_ShoppingList = {}
 ProfitCraft_ShoppingListMax = 4
 
 local NUM_DISPLAY_ROWS = 11
+
+local function GetSettingValue(key, defaultValue)
+    if ProfitCraft_GetSetting then
+        local value = ProfitCraft_GetSetting(key, defaultValue)
+        if value ~= nil then
+            return value
+        end
+    end
+    return defaultValue
+end
+
+local function SetSettingValue(key, value)
+    if ProfitCraft_SetSetting then
+        ProfitCraft_SetSetting(key, value and true or false)
+    end
+end
+
+local function GetSourceStatusToken(source)
+    if source == "Quest" then
+        return "|cFFFFFF00!|r"
+    elseif source == "Trainer" then
+        return "|cFF66CCFFT|r"
+    elseif source == "Vendor" then
+        return "|cFF00FFCC$|r"
+    elseif source == "Drop" then
+        return "|cFFFF8800D|r"
+    else
+        return "|cFFFF8800?|r"
+    end
+end
 
 -- ============================================================================
 -- Currency Formatting
@@ -65,6 +99,73 @@ function ProfitCraft_FormatCurrencyNeutral(copper)
 end
 
 -- ============================================================================
+-- Settings
+-- ============================================================================
+
+local function SyncTopFilterCheckboxes()
+    if ProfitCraftFilterQuest then
+        ProfitCraftFilterQuest:SetChecked(ProfitCraft_Filters.showQuest)
+    end
+    if ProfitCraftFilterShoppingOnly then
+        ProfitCraftFilterShoppingOnly:SetChecked(ProfitCraft_Filters.showShoppingOnly)
+    end
+end
+
+function ProfitCraft_RefreshSettingsUI()
+    local settingsMap = {
+        ProfitCraftSettingShowQuest = { key = "showQuest", fallback = true },
+        ProfitCraftSettingShowTrainer = { key = "showTrainer", fallback = true },
+        ProfitCraftSettingShowVendor = { key = "showVendor", fallback = true },
+        ProfitCraftSettingShowDrop = { key = "showDrop", fallback = true },
+        ProfitCraftSettingAutoMerchant = { key = "autoOpenMerchant", fallback = true },
+        ProfitCraftSettingAutoAuction = { key = "autoOpenAuction", fallback = true },
+        ProfitCraftSettingAutoShoppingOnly = { key = "autoOpenShoppingOnly", fallback = true },
+    }
+
+    for checkboxName, data in pairs(settingsMap) do
+        local checkbox = getglobal(checkboxName)
+        if checkbox then
+            checkbox:SetChecked(GetSettingValue(data.key, data.fallback))
+        end
+    end
+end
+
+function ProfitCraft_ToggleSettings()
+    if not ProfitCraftSettingsPanel then return end
+
+    if ProfitCraftSettingsPanel:IsVisible() then
+        ProfitCraftSettingsPanel:Hide()
+    else
+        ProfitCraft_RefreshSettingsUI()
+        if ProfitCraftDashboard then
+            ProfitCraftSettingsPanel:SetFrameLevel(ProfitCraftDashboard:GetFrameLevel() + 10)
+        end
+        ProfitCraftSettingsPanel:Show()
+    end
+end
+
+function ProfitCraft_OnSettingToggle(key)
+    if not this then return end
+
+    local checked = this:GetChecked() and true or false
+    SetSettingValue(key, checked)
+
+    if key == "showQuest" then
+        ProfitCraft_Filters.showQuest = checked
+    elseif key == "showTrainer" then
+        ProfitCraft_Filters.showTrainer = checked
+    elseif key == "showVendor" then
+        ProfitCraft_Filters.showVendor = checked
+    elseif key == "showDrop" then
+        ProfitCraft_Filters.showDrop = checked
+    end
+
+    SyncTopFilterCheckboxes()
+    ProfitCraft_ApplySortAndFilter()
+    ProfitCraft_DashboardUpdate()
+end
+
+-- ============================================================================
 -- Dashboard OnLoad
 -- ============================================================================
 
@@ -82,16 +183,33 @@ function ProfitCraft_Dashboard_OnLoad(frame)
         btn:Hide()
     end
 
+    -- Initialize filter state
+    ProfitCraft_Filters.showLearned = true
+    ProfitCraft_Filters.showUnlearned = true
+    ProfitCraft_Filters.showQuest = GetSettingValue("showQuest", true)
+    ProfitCraft_Filters.showTrainer = GetSettingValue("showTrainer", true)
+    ProfitCraft_Filters.showVendor = GetSettingValue("showVendor", true)
+    ProfitCraft_Filters.showDrop = GetSettingValue("showDrop", true)
+    ProfitCraft_Filters.showShoppingOnly = GetSettingValue("showShoppingOnly", false)
+
     -- Initialize filter checkboxes
     if ProfitCraftFilterLearned then
-        ProfitCraftFilterLearned:SetChecked(true)
+        ProfitCraftFilterLearned:SetChecked(ProfitCraft_Filters.showLearned)
     end
     if ProfitCraftFilterUnlearned then
-        ProfitCraftFilterUnlearned:SetChecked(true)
+        ProfitCraftFilterUnlearned:SetChecked(ProfitCraft_Filters.showUnlearned)
     end
     if ProfitCraftFilterQuest then
-        ProfitCraftFilterQuest:SetChecked(true)
+        ProfitCraftFilterQuest:SetChecked(ProfitCraft_Filters.showQuest)
     end
+    if ProfitCraftFilterShoppingOnly then
+        ProfitCraftFilterShoppingOnly:SetChecked(ProfitCraft_Filters.showShoppingOnly)
+    end
+
+    if ProfitCraftSettingsPanel then
+        ProfitCraftSettingsPanel:Hide()
+    end
+    ProfitCraft_RefreshSettingsUI()
 
     -- Create shopping list entry rows (up to 4 tracked recipes)
     for i = 1, ProfitCraft_ShoppingListMax do
@@ -198,26 +316,79 @@ end
 -- ============================================================================
 
 function ProfitCraft_OnFilterChanged()
-    ProfitCraft_Filters.showLearned = ProfitCraftFilterLearned:GetChecked() and true or false
-    ProfitCraft_Filters.showUnlearned = ProfitCraftFilterUnlearned:GetChecked() and true or false
-    ProfitCraft_Filters.showQuest = ProfitCraftFilterQuest:GetChecked() and true or false
+    if ProfitCraftFilterLearned then
+        ProfitCraft_Filters.showLearned = ProfitCraftFilterLearned:GetChecked() and true or false
+    end
+    if ProfitCraftFilterUnlearned then
+        ProfitCraft_Filters.showUnlearned = ProfitCraftFilterUnlearned:GetChecked() and true or false
+    end
+    if ProfitCraftFilterQuest then
+        ProfitCraft_Filters.showQuest = ProfitCraftFilterQuest:GetChecked() and true or false
+        SetSettingValue("showQuest", ProfitCraft_Filters.showQuest)
+    end
+    if ProfitCraftFilterShoppingOnly then
+        ProfitCraft_Filters.showShoppingOnly = ProfitCraftFilterShoppingOnly:GetChecked() and true or false
+        SetSettingValue("showShoppingOnly", ProfitCraft_Filters.showShoppingOnly)
+    end
+
+    ProfitCraft_RefreshSettingsUI()
+    ProfitCraft_ApplySortAndFilter()
+    ProfitCraft_DashboardUpdate()
+end
+
+function ProfitCraft_SetShoppingOnlyFilter(enabled)
+    ProfitCraft_Filters.showShoppingOnly = enabled and true or false
+    SetSettingValue("showShoppingOnly", ProfitCraft_Filters.showShoppingOnly)
+    if ProfitCraftFilterShoppingOnly then
+        ProfitCraftFilterShoppingOnly:SetChecked(ProfitCraft_Filters.showShoppingOnly)
+    end
+
     ProfitCraft_ApplySortAndFilter()
     ProfitCraft_DashboardUpdate()
 end
 
 function ProfitCraft_ApplySortAndFilter()
     ProfitCraft_FilteredList = {}
+
+    local shoppingOnlyMap = nil
+    if ProfitCraft_Filters.showShoppingOnly then
+        shoppingOnlyMap = {}
+        for _, shoppingEntry in ipairs(ProfitCraft_ShoppingList) do
+            if shoppingEntry.recipe and shoppingEntry.recipe.name then
+                shoppingOnlyMap[string.lower(shoppingEntry.recipe.name)] = true
+            end
+        end
+    end
+
     for _, entry in ipairs(ProfitCraft_List) do
         local dominated = true
+
         if entry.isLearned and not ProfitCraft_Filters.showLearned then
             dominated = false
         end
         if not entry.isLearned and not ProfitCraft_Filters.showUnlearned then
             dominated = false
         end
-        if not entry.isLearned and entry.source == "Quest" and not ProfitCraft_Filters.showQuest then
-            dominated = false
+
+        if not entry.isLearned then
+            if entry.source == "Quest" and not ProfitCraft_Filters.showQuest then
+                dominated = false
+            elseif entry.source == "Trainer" and not ProfitCraft_Filters.showTrainer then
+                dominated = false
+            elseif entry.source == "Vendor" and not ProfitCraft_Filters.showVendor then
+                dominated = false
+            elseif entry.source == "Drop" and not ProfitCraft_Filters.showDrop then
+                dominated = false
+            end
         end
+
+        if dominated and shoppingOnlyMap then
+            local entryName = entry.name and string.lower(entry.name) or ""
+            if entryName == "" or not shoppingOnlyMap[entryName] then
+                dominated = false
+            end
+        end
+
         if dominated then
             table.insert(ProfitCraft_FilteredList, entry)
         end
@@ -248,10 +419,8 @@ function ProfitCraft_DashboardUpdate()
                 local statusText = getglobal("ProfitCraftDashboardEntry"..i.."Status")
                 if data.isLearned then
                     statusText:SetText("|cFF00FF00*|r")
-                elseif data.source == "Quest" then
-                    statusText:SetText("|cFFFFFF00!|r")
                 else
-                    statusText:SetText("|cFFFF8800?|r")
+                    statusText:SetText(GetSourceStatusToken(data.source))
                 end
 
                 -- Name (dimmed for unlearned)
@@ -301,12 +470,13 @@ function ProfitCraft_OnEntryClick(btn)
     if not data then return end
 
     -- Check if already in the shopping list
-    for idx, entry in ipairs(ProfitCraft_ShoppingList) do
+    for _, entry in ipairs(ProfitCraft_ShoppingList) do
         if entry.recipe and entry.recipe.name == data.name then
             -- Increment quantity instead of adding a duplicate
             entry.qty = entry.qty + 1
             if entry.qty > 99 then entry.qty = 99 end
             ProfitCraft_UpdateTracker()
+            ProfitCraft_ApplySortAndFilter()
             ProfitCraft_DashboardUpdate()
             return
         end
@@ -324,6 +494,7 @@ function ProfitCraft_OnEntryClick(btn)
     })
 
     ProfitCraft_UpdateTracker()
+    ProfitCraft_ApplySortAndFilter()
     ProfitCraft_DashboardUpdate()
 end
 
@@ -383,6 +554,7 @@ function ProfitCraft_RemoveFromShoppingList(index)
             if rb then rb.index = i end
         end
         ProfitCraft_UpdateTracker()
+        ProfitCraft_ApplySortAndFilter()
         ProfitCraft_DashboardUpdate()
     end
 end
@@ -506,6 +678,38 @@ function ProfitCraft_UpdateTracker()
 end
 
 -- ============================================================================
+-- Auto Open on Merchant/Auction
+-- ============================================================================
+
+function ProfitCraft_HandleContextAutoOpen(context)
+    if not ProfitCraft_ShoppingList or table.getn(ProfitCraft_ShoppingList) == 0 then
+        return
+    end
+
+    if context == "merchant" and not GetSettingValue("autoOpenMerchant", true) then
+        return
+    end
+    if context == "auction" and not GetSettingValue("autoOpenAuction", true) then
+        return
+    end
+
+    if GetSettingValue("autoOpenShoppingOnly", true) then
+        ProfitCraft_Filters.showShoppingOnly = true
+        if ProfitCraftFilterShoppingOnly then
+            ProfitCraftFilterShoppingOnly:SetChecked(true)
+        end
+    end
+
+    if ProfitCraftDashboard and not ProfitCraftDashboard:IsVisible() then
+        ProfitCraftDashboard:Show()
+    end
+
+    ProfitCraft_ApplySortAndFilter()
+    ProfitCraft_DashboardUpdate()
+    ProfitCraft_UpdateTracker()
+end
+
+-- ============================================================================
 -- Toggle Dashboard
 -- ============================================================================
 
@@ -517,6 +721,9 @@ function ProfitCraft_ToggleDashboard()
 
     if ProfitCraftDashboard:IsVisible() then
         ProfitCraftDashboard:Hide()
+        if ProfitCraftSettingsPanel then
+            ProfitCraftSettingsPanel:Hide()
+        end
     else
         ProfitCraftDashboard:Show()
         ProfitCraft_ApplySortAndFilter()

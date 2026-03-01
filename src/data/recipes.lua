@@ -3,6 +3,52 @@
 
 if not ProfitCraftDB then ProfitCraftDB = {} end
 
+local TRAINER_LOCATION_HINTS = {
+    ["Alchemy"] = "Alliance: Alchemy trainers in Stormwind and Ironforge. Horde: Orgrimmar and Undercity.",
+    ["Blacksmithing"] = "Alliance: Blacksmith trainers in Stormwind and Ironforge. Horde: Orgrimmar and Thunder Bluff.",
+    ["Engineering"] = "Alliance: Engineering trainers in Stormwind and Ironforge. Horde: Orgrimmar and Undercity.",
+    ["Enchanting"] = "Alliance: Enchanting trainers in Stormwind and Ironforge. Horde: Orgrimmar and Undercity.",
+    ["Herbalism"] = "Alliance: Herbalism trainers in Stormwind and Ironforge. Horde: Orgrimmar and Thunder Bluff.",
+    ["Leatherworking"] = "Alliance: Leatherworking trainers in Stormwind and Darnassus. Horde: Orgrimmar and Thunder Bluff.",
+    ["Mining"] = "Alliance: Mining trainers in Stormwind and Ironforge. Horde: Orgrimmar and Thunder Bluff.",
+    ["Skinning"] = "Alliance: Skinning trainers in Stormwind and Ironforge. Horde: Orgrimmar and Thunder Bluff.",
+    ["Tailoring"] = "Alliance: Tailoring trainers in Stormwind and Ironforge. Horde: Orgrimmar and Undercity.",
+}
+
+local function NormalizeRecipeSource(source)
+    if not source then return "Unknown" end
+
+    local normalized = string.lower(source)
+    if string.find(normalized, "trainer") then return "Trainer" end
+    if string.find(normalized, "vendor") then return "Vendor" end
+    if string.find(normalized, "quest") then return "Quest" end
+    if string.find(normalized, "drop") then return "Drop" end
+    if string.find(normalized, "reputation") then return "Reputation" end
+
+    return source
+end
+
+local function ResolveSourceDetails(profession, source, details)
+    local hasDetails = details and details ~= ""
+    local genericTrainerDetails = hasDetails and string.find(details, "^Any%s") ~= nil
+
+    if source == "Trainer" then
+        local hint = TRAINER_LOCATION_HINTS[profession]
+        if hint then
+            if hasDetails and not genericTrainerDetails then
+                return details .. " " .. hint
+            end
+            return hint
+        end
+    end
+
+    if hasDetails then
+        return details
+    end
+
+    return nil
+end
+
 -- Structure:
 -- ProfitCraft_RecipeDB[ProfessionName][SkillLevel] = {
 --     { id = ItemID, name = "Recipe Name", source = "Vendor/Drop/Quest", details = "Specific NPC or Zone" }
@@ -55,13 +101,28 @@ ProfitCraft_RecipeDB = {
 function ProfitCraft_GetUnlearnedRecipes(profession, currentSkill)
     local unlearned = {}
     if ProfitCraft_RecipeDB[profession] then
-        for reqSkill, recipes in pairs(ProfitCraft_RecipeDB[profession]) do
+        local thresholds = {}
+        for reqSkill in pairs(ProfitCraft_RecipeDB[profession]) do
+            table.insert(thresholds, reqSkill)
+        end
+        table.sort(thresholds)
+
+        for _, reqSkill in ipairs(thresholds) do
+            local recipes = ProfitCraft_RecipeDB[profession][reqSkill]
             if currentSkill >= reqSkill then
                 for _, recipe in ipairs(recipes) do
+                    local normalized = {}
+                    for key, value in pairs(recipe) do
+                        normalized[key] = value
+                    end
+
+                    normalized.source = NormalizeRecipeSource(recipe.source)
+                    normalized.details = ResolveSourceDetails(profession, normalized.source, recipe.details)
+
                     -- We should ideally check if the player already knows the recipe here,
                     -- but that requires comparing against the currently open TradeSkill list.
                     -- For now, we return all recipes the player *can* learn based on skill.
-                    table.insert(unlearned, recipe)
+                    table.insert(unlearned, normalized)
                 end
             end
         end

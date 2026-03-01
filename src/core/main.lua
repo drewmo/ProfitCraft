@@ -11,6 +11,47 @@ local function Print(msg)
     end
 end
 
+local SETTINGS_DEFAULTS = {
+    showQuest = true,
+    showTrainer = true,
+    showVendor = true,
+    showDrop = true,
+    showShoppingOnly = false,
+    autoOpenMerchant = true,
+    autoOpenAuction = true,
+    autoOpenShoppingOnly = true,
+}
+
+function ProfitCraft_EnsureSettings()
+    if not ProfitCraftDB then ProfitCraftDB = {} end
+    if not ProfitCraftDB.settings then ProfitCraftDB.settings = {} end
+
+    for key, defaultValue in pairs(SETTINGS_DEFAULTS) do
+        if ProfitCraftDB.settings[key] == nil then
+            ProfitCraftDB.settings[key] = defaultValue
+        end
+    end
+
+    return ProfitCraftDB.settings
+end
+
+function ProfitCraft_GetSetting(key, fallback)
+    local settings = ProfitCraft_EnsureSettings()
+    local value = settings[key]
+
+    if value == nil and fallback ~= nil then
+        settings[key] = fallback
+        return fallback
+    end
+
+    return value
+end
+
+function ProfitCraft_SetSetting(key, value)
+    local settings = ProfitCraft_EnsureSettings()
+    settings[key] = value and true or false
+end
+
 -- ============================================================================
 -- Aux Pricing Integration
 -- ============================================================================
@@ -112,25 +153,33 @@ end
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("TRADE_SKILL_SHOW")
 frame:RegisterEvent("TRADE_SKILL_UPDATE")
+frame:RegisterEvent("MERCHANT_SHOW")
+frame:RegisterEvent("AUCTION_HOUSE_SHOW")
 
 local lastCalcTime = 0
 local CALC_THROTTLE = 1
 
 frame:SetScript("OnEvent", function()
     if event == "ADDON_LOADED" and arg1 == addonName then
-        Print("v1.2.0 loaded. Open a profession window or type /pc")
+        Print("v1.4.0 loaded. Open a profession window or type /pc")
 
         -- Initialize Aux API
         InitAuxAPI()
         if hasAux then
-            Print("aux-addon detected — pricing active.")
+            Print("Aux pricing active. Use the minimap icon or /pc.")
         else
-            Print("|cFFFF8800Warning:|r aux-addon not found. Prices will show as '-'.")
+            Print("|cFFFF8800Warning:|r aux-addon not found. Prices may be inaccurate.")
         end
 
         -- Initialize SavedVariables
         if not ProfitCraftDB then
             ProfitCraftDB = {}
+        end
+        ProfitCraft_EnsureSettings()
+
+        -- Initialize Minimap Button
+        if ProfitCraft_InitMinimapButton then
+            ProfitCraft_InitMinimapButton()
         end
 
     elseif event == "TRADE_SKILL_SHOW" then
@@ -143,6 +192,14 @@ frame:SetScript("OnEvent", function()
         if (now - lastCalcTime) > CALC_THROTTLE then
             lastCalcTime = now
             ProfitCraft_CalculateProfits()
+        end
+    elseif event == "MERCHANT_SHOW" then
+        if ProfitCraft_HandleContextAutoOpen then
+            ProfitCraft_HandleContextAutoOpen("merchant")
+        end
+    elseif event == "AUCTION_HOUSE_SHOW" then
+        if ProfitCraft_HandleContextAutoOpen then
+            ProfitCraft_HandleContextAutoOpen("auction")
         end
     end
 end)
@@ -158,10 +215,20 @@ SlashCmdList["PROFITCRAFT"] = function(msg)
         Print("Commands:")
         Print("  /pc — Toggle the dashboard")
         Print("  /pc clear — Clear the shopping list")
+        Print("  /pc settings — Toggle the settings panel")
         Print("  /pc help — Show this help")
+    elseif msg == "settings" then
+        if ProfitCraft_ToggleSettings then
+            if not ProfitCraftDashboard or not ProfitCraftDashboard:IsVisible() then
+                ProfitCraft_ToggleDashboard()
+            end
+            ProfitCraft_ToggleSettings()
+        end
     elseif msg == "clear" then
         ProfitCraft_ShoppingList = {}
         ProfitCraft_UpdateTracker()
+        if ProfitCraft_ApplySortAndFilter then ProfitCraft_ApplySortAndFilter() end
+        if ProfitCraft_DashboardUpdate then ProfitCraft_DashboardUpdate() end
         Print("Shopping list cleared.")
     else
         ProfitCraft_ToggleDashboard()
