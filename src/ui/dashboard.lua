@@ -1247,6 +1247,8 @@ function ProfitCraft_UpdateTracker()
             for _, reagent in ipairs(selected.reagents) do
                 local need = reagent.count or 0
                 local have = GetCurrentReagentHaveCount(reagent, bagCountsByID, bagCountsByName)
+                local unitCost = reagent.unitCost or 0
+                local lineSubtotal = unitCost * need
 
                 local color = "|cFFFF4444"
                 if have >= need then
@@ -1257,7 +1259,9 @@ function ProfitCraft_UpdateTracker()
 
                 table.insert(rows, {
                     type = "reagent",
-                    text = "  " .. color .. have .. "/" .. need .. "|r  " .. (reagent.name or "Unknown"),
+                    text = "  " .. color .. have .. "/" .. need .. "|r  " .. (reagent.name or "Unknown")
+                        .. "  " .. ProfitCraft_FormatCurrencyNeutral(unitCost)
+                        .. " x" .. need .. " = " .. ProfitCraft_FormatCurrencyNeutral(lineSubtotal),
                     searchName = reagent.name,
                 })
             end
