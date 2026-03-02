@@ -104,26 +104,21 @@ local function PrintDashboardMessage(msg)
 end
 
 local function IsAuctionHouseOpen()
-    return AuctionFrame and AuctionFrame.IsVisible and AuctionFrame:IsVisible()
-end
+    if ProfitCraft_AuctionHouseOpen then
+        return true
+    end
 
-local function HasAuxForSearch()
-    if ProfitCraft_HasAuxPricing and ProfitCraft_HasAuxPricing() then
+    if AuctionFrame and AuctionFrame.IsVisible and AuctionFrame:IsVisible() then
         return true
     end
-    if Aux then
+    if AuctionFrameBrowse and AuctionFrameBrowse.IsVisible and AuctionFrameBrowse:IsVisible() then
         return true
-    end
-    if IsAddOnLoaded then
-        if IsAddOnLoaded("aux-addon") or IsAddOnLoaded("aux") then
-            return true
-        end
     end
     return false
 end
 
 local function IsAuxSearchReady()
-    return IsAuctionHouseOpen() and HasAuxForSearch()
+    return IsAuctionHouseOpen()
 end
 
 local function GetRecipeSearchName(recipe)
@@ -630,6 +625,44 @@ function ProfitCraft_OnSettingToggle(key)
     ProfitCraft_DashboardUpdate()
 end
 
+local function ApplyDashboardModeLayout()
+    if not ProfitCraftDashboard or not ProfitCraftTracker then
+        return
+    end
+
+    local isShoppingView = ProfitCraft_Filters and ProfitCraft_Filters.showShoppingOnly
+
+    local headers = ProfitCraftColumnHeaders
+    local scrollFrame = ProfitCraftDashboardScrollFrame
+    local separator = ProfitCraftSeparator
+
+    if isShoppingView then
+        if headers then headers:Hide() end
+        if scrollFrame then scrollFrame:Hide() end
+        if separator then separator:Hide() end
+
+        for i = 1, NUM_DISPLAY_ROWS do
+            local button = getglobal("ProfitCraftDashboardEntry"..i)
+            if button then
+                button:Hide()
+            end
+        end
+
+        ProfitCraftTracker:ClearAllPoints()
+        ProfitCraftTracker:SetPoint("TOPLEFT", ProfitCraftDashboard, "TOPLEFT", 22, -56)
+        ProfitCraftTracker:SetPoint("BOTTOMRIGHT", ProfitCraftDashboard, "BOTTOMRIGHT", -28, 16)
+    else
+        if headers then headers:Show() end
+        if scrollFrame then scrollFrame:Show() end
+        if separator then separator:Show() end
+
+        ProfitCraftTracker:ClearAllPoints()
+        ProfitCraftTracker:SetPoint("TOPLEFT", ProfitCraftDashboard, "TOPLEFT", 22, -330)
+        ProfitCraftTracker:SetWidth(570)
+        ProfitCraftTracker:SetHeight(220)
+    end
+end
+
 -- ============================================================================
 -- Dashboard OnLoad
 -- ============================================================================
@@ -774,6 +807,7 @@ function ProfitCraft_Dashboard_OnLoad(frame)
     end
     ProfitCraft_SelectedRecipe = nil
     ProfitCraft_SelectedRecipeKey = nil
+    ApplyDashboardModeLayout()
     RefreshDetailActionButtons()
     ProfitCraft_UpdateTracker()
 end
@@ -841,6 +875,7 @@ function ProfitCraft_OnFilterChanged()
 
     ProfitCraft_RefreshSettingsUI()
     ProfitCraft_ApplySortAndFilter()
+    ApplyDashboardModeLayout()
     ProfitCraft_DashboardUpdate()
     ProfitCraft_UpdateTracker()
 end
@@ -853,6 +888,7 @@ function ProfitCraft_SetShoppingOnlyFilter(enabled)
     end
 
     ProfitCraft_ApplySortAndFilter()
+    ApplyDashboardModeLayout()
     ProfitCraft_DashboardUpdate()
     ProfitCraft_UpdateTracker()
 end
@@ -914,6 +950,19 @@ end
 function ProfitCraft_DashboardUpdate()
     local scrollFrame = getglobal("ProfitCraftDashboardScrollFrame")
     if not scrollFrame then return end
+
+    ApplyDashboardModeLayout()
+
+    if ProfitCraft_Filters and ProfitCraft_Filters.showShoppingOnly then
+        FauxScrollFrame_Update(scrollFrame, 0, NUM_DISPLAY_ROWS, 22)
+        for i = 1, NUM_DISPLAY_ROWS do
+            local button = getglobal("ProfitCraftDashboardEntry"..i)
+            if button then
+                button:Hide()
+            end
+        end
+        return
+    end
 
     local numItems = table.getn(ProfitCraft_FilteredList)
     FauxScrollFrame_Update(scrollFrame, numItems, NUM_DISPLAY_ROWS, 22)

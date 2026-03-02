@@ -698,6 +698,7 @@ end
 local aux_history = nil
 local aux_info = nil
 local hasAux = false
+ProfitCraft_AuctionHouseOpen = ProfitCraft_AuctionHouseOpen or false
 
 local function InitAuxAPI()
     -- Try the module require system (OldManAlpha/aux-addon)
@@ -816,6 +817,7 @@ local BAG_CACHE_THROTTLE = 1
 frame:SetScript("OnEvent", function()
     if event == "ADDON_LOADED" and arg1 == addonName then
         Print("v1.6.5 loaded. Open a profession window or type /pc")
+        ProfitCraft_AuctionHouseOpen = false
 
         -- Initialize Aux API
         InitAuxAPI()
@@ -893,10 +895,15 @@ frame:SetScript("OnEvent", function()
             ProfitCraft_HandleContextAutoOpen("merchant")
         end
     elseif event == "AUCTION_HOUSE_SHOW" then
+        ProfitCraft_AuctionHouseOpen = true
         if ProfitCraft_HandleContextAutoOpen then
             ProfitCraft_HandleContextAutoOpen("auction")
         end
+        if ProfitCraftDashboard and ProfitCraftDashboard:IsVisible() and ProfitCraft_UpdateTracker then
+            ProfitCraft_UpdateTracker()
+        end
     elseif event == "AUCTION_HOUSE_CLOSED" then
+        ProfitCraft_AuctionHouseOpen = false
         if ProfitCraftDashboard and ProfitCraftDashboard:IsVisible() and ProfitCraft_UpdateTracker then
             ProfitCraft_UpdateTracker()
         end
