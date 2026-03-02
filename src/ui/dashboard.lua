@@ -366,8 +366,7 @@ local function RefreshDetailActionButtons()
     local addButton = ProfitCraftTrackerAddButton
     local removeButton = ProfitCraftTrackerRemoveButton
     local searchItemButton = ProfitCraftTrackerSearchItemButton
-    local searchMatsButton = ProfitCraftTrackerSearchMatsButton
-    if not addButton and not removeButton and not searchItemButton and not searchMatsButton then return end
+    if not addButton and not removeButton and not searchItemButton then return end
 
     if not ProfitCraft_SelectedRecipe then
         if addButton then
@@ -380,9 +379,6 @@ local function RefreshDetailActionButtons()
         end
         if searchItemButton then
             searchItemButton:Disable()
-        end
-        if searchMatsButton then
-            searchMatsButton:Disable()
         end
         return
     end
@@ -426,15 +422,6 @@ local function RefreshDetailActionButtons()
             searchItemButton:Enable()
         else
             searchItemButton:Disable()
-        end
-    end
-
-    if searchMatsButton then
-        local hasReagents = ProfitCraft_SelectedRecipe.reagents and table.getn(ProfitCraft_SelectedRecipe.reagents) > 0
-        if canSearch and hasReagents then
-            searchMatsButton:Enable()
-        else
-            searchMatsButton:Disable()
         end
     end
 end
@@ -689,7 +676,7 @@ function ProfitCraft_Dashboard_OnLoad(frame)
 
         local textFs = row:CreateFontString("ProfitCraftTrackerRow"..i.."Text", "ARTWORK", "GameFontHighlightSmall")
         textFs:SetJustifyH("LEFT")
-        textFs:SetWidth(400)
+        textFs:SetWidth(524)
         textFs:SetPoint("LEFT", row, "LEFT", 2, 0)
 
         local minusBtn = CreateFrame("Button", "ProfitCraftTrackerRow"..i.."Minus", row)
@@ -730,7 +717,7 @@ function ProfitCraft_Dashboard_OnLoad(frame)
         local searchBtn = CreateFrame("Button", "ProfitCraftTrackerRow"..i.."Search", row, "UIPanelButtonTemplate")
         searchBtn:SetWidth(26)
         searchBtn:SetHeight(16)
-        searchBtn:SetPoint("RIGHT", row, "RIGHT", -2, 0)
+        searchBtn:SetPoint("LEFT", row, "LEFT", 2, 0)
         searchBtn:SetText("AH")
         searchBtn.searchName = nil
         searchBtn:SetScript("OnClick", function()
@@ -1096,27 +1083,6 @@ function ProfitCraft_SearchSelectedRecipeInAux()
     ProfitCraft_SearchInAuxByName(searchName)
 end
 
-function ProfitCraft_SearchSelectedReagentsInAux()
-    if not ProfitCraft_SelectedRecipe or not ProfitCraft_SelectedRecipe.reagents then
-        return
-    end
-
-    local firstSearchName = nil
-    for _, reagent in ipairs(ProfitCraft_SelectedRecipe.reagents) do
-        if reagent and reagent.name and reagent.name ~= "" then
-            firstSearchName = reagent.name
-            break
-        end
-    end
-
-    if not firstSearchName then
-        PrintDashboardMessage("No reagent names available for Aux search.")
-        return
-    end
-
-    ProfitCraft_SearchInAuxByName(firstSearchName)
-end
-
 function ProfitCraft_RemoveFromShoppingList(index)
     if ProfitCraft_ShoppingList[index] then
         table.remove(ProfitCraft_ShoppingList, index)
@@ -1327,6 +1293,9 @@ function ProfitCraft_UpdateTracker()
 
                 local canSearch = IsAuxSearchReady()
                 if rowData.searchName and rowData.searchName ~= "" then
+                    textFs:ClearAllPoints()
+                    textFs:SetPoint("LEFT", row, "LEFT", 32, 0)
+                    textFs:SetWidth(494)
                     searchBtn.searchName = rowData.searchName
                     if canSearch then
                         searchBtn:Enable()
@@ -1335,6 +1304,9 @@ function ProfitCraft_UpdateTracker()
                     end
                     searchBtn:Show()
                 else
+                    textFs:ClearAllPoints()
+                    textFs:SetPoint("LEFT", row, "LEFT", 2, 0)
+                    textFs:SetWidth(524)
                     searchBtn:Hide()
                 end
 

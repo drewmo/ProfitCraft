@@ -587,21 +587,6 @@
                             <OnClick>ProfitCraft_SearchSelectedRecipeInAux();</OnClick>
                         </Scripts>
                     </Button>
-                    <Button name="ProfitCraftTrackerSearchMatsButton" inherits="UIPanelButtonTemplate" text="AH Mats">
-                        <Size>
-                            <AbsDimension x="72" y="20"/>
-                        </Size>
-                        <Anchors>
-                            <Anchor point="RIGHT" relativeTo="ProfitCraftTrackerSearchItemButton" relativePoint="LEFT">
-                                <Offset>
-                                    <AbsDimension x="-4" y="0"/>
-                                </Offset>
-                            </Anchor>
-                        </Anchors>
-                        <Scripts>
-                            <OnClick>ProfitCraft_SearchSelectedReagentsInAux();</OnClick>
-                        </Scripts>
-                    </Button>
                     <Button name="ProfitCraftTrackerMinus">
                         <Size>
                             <AbsDimension x="22" y="22"/>
