@@ -425,13 +425,13 @@ local function RefreshProfessionFilterDropdown()
     end
 
     if UIDropDownMenu_SetWidth then
-        UIDropDownMenu_SetWidth(dropdown, 124)
+        UIDropDownMenu_SetWidth(124, dropdown)
     end
     if UIDropDownMenu_SetButtonWidth then
-        UIDropDownMenu_SetButtonWidth(dropdown, 140)
+        UIDropDownMenu_SetButtonWidth(140, dropdown)
     end
     if UIDropDownMenu_JustifyText then
-        UIDropDownMenu_JustifyText(dropdown, "LEFT")
+        UIDropDownMenu_JustifyText("LEFT", dropdown)
     end
 
     if UIDropDownMenu_Initialize and UIDropDownMenu_CreateInfo and UIDropDownMenu_AddButton then
