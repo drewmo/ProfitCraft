@@ -278,21 +278,16 @@ local function RefreshDetailActionButtons()
             addButton:Disable()
         end
 
-        if currentQty > 0 then
-            addButton:SetText("Add (" .. currentQty .. ")")
-        else
-            addButton:SetText("Add")
-        end
+        addButton:SetText("Add")
     end
 
     if removeButton then
         if currentQty > 0 then
             removeButton:Enable()
-            removeButton:SetText("Remove (" .. currentQty .. ")")
         else
             removeButton:Disable()
-            removeButton:SetText("Remove")
         end
+        removeButton:SetText("Remove")
     end
 end
 
