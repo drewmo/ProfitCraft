@@ -212,10 +212,10 @@ end
 local function GetShoppingListEntryByKey(recipeKey)
     if not recipeKey then return nil end
 
-    for _, entry in ipairs(ProfitCraft_ShoppingList) do
+    for index, entry in ipairs(ProfitCraft_ShoppingList) do
         local entryKey = GetShoppingEntryLookupKey(entry)
         if entryKey and entryKey == recipeKey then
-            return entry
+            return entry, index
         end
     end
 
@@ -240,13 +240,20 @@ local function SyncSelectedRecipeWithCurrentList()
     ProfitCraft_SelectedRecipeKey = nil
 end
 
-local function RefreshDetailAddButton()
-    local button = ProfitCraftTrackerAddButton
-    if not button then return end
+local function RefreshDetailActionButtons()
+    local addButton = ProfitCraftTrackerAddButton
+    local removeButton = ProfitCraftTrackerRemoveButton
+    if not addButton and not removeButton then return end
 
     if not ProfitCraft_SelectedRecipe then
-        button:Disable()
-        button:SetText("Add to Shopping")
+        if addButton then
+            addButton:Disable()
+            addButton:SetText("Add")
+        end
+        if removeButton then
+            removeButton:Disable()
+            removeButton:SetText("Remove")
+        end
         return
     end
 
@@ -257,11 +264,35 @@ local function RefreshDetailAddButton()
         currentQty = shoppingEntry.qty
     end
 
-    button:Enable()
-    if currentQty > 0 then
-        button:SetText("Add to Shopping (" .. currentQty .. ")")
-    else
-        button:SetText("Add to Shopping")
+    if addButton then
+        local canAdd = true
+        if currentQty >= 99 then
+            canAdd = false
+        elseif currentQty <= 0 and table.getn(ProfitCraft_ShoppingList) >= ProfitCraft_ShoppingListMax then
+            canAdd = false
+        end
+
+        if canAdd then
+            addButton:Enable()
+        else
+            addButton:Disable()
+        end
+
+        if currentQty > 0 then
+            addButton:SetText("Add (" .. currentQty .. ")")
+        else
+            addButton:SetText("Add")
+        end
+    end
+
+    if removeButton then
+        if currentQty > 0 then
+            removeButton:Enable()
+            removeButton:SetText("Remove (" .. currentQty .. ")")
+        else
+            removeButton:Disable()
+            removeButton:SetText("Remove")
+        end
     end
 end
 
@@ -489,9 +520,8 @@ function ProfitCraft_Dashboard_OnLoad(frame)
     -- Legacy top controls are replaced by the explicit detail-pane add button.
     if ProfitCraftTrackerMinus then ProfitCraftTrackerMinus:Hide() end
     if ProfitCraftTrackerPlus then ProfitCraftTrackerPlus:Hide() end
-    if ProfitCraftTrackerAddButton then
-        ProfitCraftTrackerAddButton:Disable()
-    end
+    if ProfitCraftTrackerAddButton then ProfitCraftTrackerAddButton:Disable() end
+    if ProfitCraftTrackerRemoveButton then ProfitCraftTrackerRemoveButton:Disable() end
 
     local tracker = ProfitCraftTracker
     if not tracker then return end
@@ -566,7 +596,7 @@ function ProfitCraft_Dashboard_OnLoad(frame)
     end
     ProfitCraft_SelectedRecipe = nil
     ProfitCraft_SelectedRecipeKey = nil
-    RefreshDetailAddButton()
+    RefreshDetailActionButtons()
     ProfitCraft_UpdateTracker()
 end
 
@@ -762,7 +792,7 @@ function ProfitCraft_OnEntryClick(btn)
 
     ProfitCraft_SelectedRecipe = data
     ProfitCraft_SelectedRecipeKey = BuildRecipeLookupKey(data)
-    RefreshDetailAddButton()
+    RefreshDetailActionButtons()
     ProfitCraft_UpdateTracker()
     ProfitCraft_DashboardUpdate()
 end
@@ -850,7 +880,34 @@ function ProfitCraft_AddSelectedRecipeToShoppingList()
     end
 
     PersistShoppingList()
-    RefreshDetailAddButton()
+    RefreshDetailActionButtons()
+    ProfitCraft_UpdateTracker()
+    ProfitCraft_ApplySortAndFilter()
+    ProfitCraft_DashboardUpdate()
+end
+
+function ProfitCraft_RemoveSelectedRecipeFromShoppingList()
+    if not ProfitCraft_SelectedRecipe then
+        return
+    end
+
+    local targetKey = BuildRecipeLookupKey(ProfitCraft_SelectedRecipe)
+    if not targetKey then
+        return
+    end
+
+    local existing, existingIndex = GetShoppingListEntryByKey(targetKey)
+    if not existing or not existingIndex then
+        return
+    end
+
+    existing.qty = (existing.qty or 1) - 1
+    if existing.qty <= 0 then
+        table.remove(ProfitCraft_ShoppingList, existingIndex)
+    end
+
+    PersistShoppingList()
+    RefreshDetailActionButtons()
     ProfitCraft_UpdateTracker()
     ProfitCraft_ApplySortAndFilter()
     ProfitCraft_DashboardUpdate()
@@ -860,7 +917,7 @@ function ProfitCraft_RemoveFromShoppingList(index)
     if ProfitCraft_ShoppingList[index] then
         table.remove(ProfitCraft_ShoppingList, index)
         PersistShoppingList()
-        RefreshDetailAddButton()
+        RefreshDetailActionButtons()
         ProfitCraft_UpdateTracker()
         ProfitCraft_ApplySortAndFilter()
         ProfitCraft_DashboardUpdate()
@@ -880,7 +937,7 @@ function ProfitCraft_AdjustShoppingListQty(index, delta)
     entry.qty = ClampShoppingQty((entry.qty or 1) + (delta or 0))
 
     PersistShoppingList()
-    RefreshDetailAddButton()
+    RefreshDetailActionButtons()
     ProfitCraft_UpdateTracker()
     ProfitCraft_ApplySortAndFilter()
     ProfitCraft_DashboardUpdate()
@@ -889,7 +946,7 @@ end
 function ProfitCraft_ClearShoppingList()
     ProfitCraft_ShoppingList = {}
     PersistShoppingList()
-    RefreshDetailAddButton()
+    RefreshDetailActionButtons()
     ProfitCraft_UpdateTracker()
     ProfitCraft_ApplySortAndFilter()
     ProfitCraft_DashboardUpdate()
@@ -927,7 +984,7 @@ function ProfitCraft_SyncShoppingListRecipes()
     end
 
     PersistShoppingList()
-    RefreshDetailAddButton()
+    RefreshDetailActionButtons()
 end
 
 function ProfitCraft_UpdateTracker()
@@ -935,7 +992,7 @@ function ProfitCraft_UpdateTracker()
     if titleFs then titleFs:SetText("Recipe Details") end
 
     SyncSelectedRecipeWithCurrentList()
-    RefreshDetailAddButton()
+    RefreshDetailActionButtons()
     local selected = ProfitCraft_SelectedRecipe
 
     local rows = {}

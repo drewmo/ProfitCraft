@@ -542,9 +542,9 @@
                     </Layer>
                 </Layers>
                 <Frames>
-                    <Button name="ProfitCraftTrackerAddButton" inherits="UIPanelButtonTemplate" text="Add to Shopping">
+                    <Button name="ProfitCraftTrackerAddButton" inherits="UIPanelButtonTemplate" text="Add">
                         <Size>
-                            <AbsDimension x="140" y="20"/>
+                            <AbsDimension x="78" y="20"/>
                         </Size>
                         <Anchors>
                             <Anchor point="TOPRIGHT" relativeTo="ProfitCraftTracker">
@@ -555,6 +555,21 @@
                         </Anchors>
                         <Scripts>
                             <OnClick>ProfitCraft_AddSelectedRecipeToShoppingList();</OnClick>
+                        </Scripts>
+                    </Button>
+                    <Button name="ProfitCraftTrackerRemoveButton" inherits="UIPanelButtonTemplate" text="Remove">
+                        <Size>
+                            <AbsDimension x="78" y="20"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="RIGHT" relativeTo="ProfitCraftTrackerAddButton" relativePoint="LEFT">
+                                <Offset>
+                                    <AbsDimension x="-4" y="0"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>ProfitCraft_RemoveSelectedRecipeFromShoppingList();</OnClick>
                         </Scripts>
                     </Button>
                     <Button name="ProfitCraftTrackerMinus">
