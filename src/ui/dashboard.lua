@@ -368,6 +368,22 @@ local function RefreshDetailActionButtons()
     local searchItemButton = ProfitCraftTrackerSearchItemButton
     if not addButton and not removeButton and not searchItemButton then return end
 
+    local isShoppingView = ProfitCraft_Filters and ProfitCraft_Filters.showShoppingOnly
+    if isShoppingView then
+        if addButton then
+            addButton:Disable()
+            addButton:SetText("Add")
+        end
+        if removeButton then
+            removeButton:Disable()
+            removeButton:SetText("Remove")
+        end
+        if searchItemButton then
+            searchItemButton:Disable()
+        end
+        return
+    end
+
     if not ProfitCraft_SelectedRecipe then
         if addButton then
             addButton:Disable()
@@ -805,6 +821,7 @@ function ProfitCraft_OnFilterChanged()
     ProfitCraft_RefreshSettingsUI()
     ProfitCraft_ApplySortAndFilter()
     ProfitCraft_DashboardUpdate()
+    ProfitCraft_UpdateTracker()
 end
 
 function ProfitCraft_SetShoppingOnlyFilter(enabled)
@@ -816,6 +833,7 @@ function ProfitCraft_SetShoppingOnlyFilter(enabled)
 
     ProfitCraft_ApplySortAndFilter()
     ProfitCraft_DashboardUpdate()
+    ProfitCraft_UpdateTracker()
 end
 
 function ProfitCraft_ApplySortAndFilter()
@@ -1158,8 +1176,15 @@ function ProfitCraft_SyncShoppingListRecipes()
 end
 
 function ProfitCraft_UpdateTracker()
+    local isShoppingView = ProfitCraft_Filters and ProfitCraft_Filters.showShoppingOnly
     local titleFs = getglobal("ProfitCraftTrackerTitle")
-    if titleFs then titleFs:SetText("Recipe Details") end
+    if titleFs then
+        if isShoppingView then
+            titleFs:SetText("Shopping List")
+        else
+            titleFs:SetText("Recipe Details")
+        end
+    end
 
     SyncSelectedRecipeWithCurrentList()
     RefreshDetailActionButtons()
@@ -1168,102 +1193,177 @@ function ProfitCraft_UpdateTracker()
     local rows = {}
     local bagCountsByID, bagCountsByName = BuildCurrentBagCounts()
 
-    if not selected then
-        table.insert(rows, {
-            type = "info",
-            text = "|cFF888888Click a recipe above to view details|r",
-        })
-    else
-        local shoppingEntry = GetShoppingListEntryByKey(ProfitCraft_SelectedRecipeKey)
-        local selectedQty = 0
-        if shoppingEntry and shoppingEntry.qty then
-            selectedQty = shoppingEntry.qty
-        end
-
-        local professionSuffix = ""
-        local shortProfession = GetProfessionShortName(selected.profession)
-        if shortProfession then
-            professionSuffix = " |cFF777777[" .. shortProfession .. "]|r"
-        end
-
-        local learnedText = "|cFFFFCC66Unlearned|r"
-        if selected.isLearned then
-            learnedText = "|cFF00FF00Learned|r"
-        end
-
-        table.insert(rows, {
-            type = "recipe",
-            text = "|cFFFFD100" .. (selected.name or "Unknown Recipe") .. "|r" .. professionSuffix,
-            searchName = GetRecipeSearchName(selected),
-        })
-        table.insert(rows, {
-            type = "meta",
-            text = "  |cFFAAAAAAStatus:|r " .. learnedText
-                .. "  |cFFAAAAAAIn List:|r " .. selectedQty,
-        })
-        table.insert(rows, {
-            type = "meta",
-            text = "  |cFFAAAAAAMarket Value:|r " .. ProfitCraft_FormatCurrencyNeutral(selected.marketValue),
-        })
-        table.insert(rows, {
-            type = "meta",
-            text = "  |cFFAAAAAACraft Cost:|r " .. ProfitCraft_FormatCurrencyNeutral(selected.cost),
-        })
-        table.insert(rows, {
-            type = "meta",
-            text = "  |cFFAAAAAAProfit:|r " .. ProfitCraft_FormatCurrency(selected.profit),
-        })
-
-        if selected.source and selected.source ~= "" then
+    if isShoppingView then
+        local shoppingCount = table.getn(ProfitCraft_ShoppingList)
+        if shoppingCount == 0 then
             table.insert(rows, {
-                type = "meta",
-                text = "  |cFFAAAAAASource:|r " .. selected.source,
-            })
-        end
-
-        if selected.sourceDetails and selected.sourceDetails ~= "" then
-            table.insert(rows, {
-                type = "meta",
-                text = "  |cFFAAAAAADetails:|r " .. selected.sourceDetails,
-            })
-        end
-
-        table.insert(rows, {
-            type = "header",
-            text = "|cFFFFFFCCReagents|r",
-        })
-
-        local reagentCount = 0
-        if selected.reagents then
-            reagentCount = table.getn(selected.reagents)
-        end
-
-        if reagentCount == 0 then
-            table.insert(rows, {
-                type = "reagent",
-                text = "  |cFF888888No reagent data|r",
+                type = "info",
+                text = "|cFF888888Shopping list is empty. Add recipes from detail view.|r",
             })
         else
-            for _, reagent in ipairs(selected.reagents) do
-                local need = reagent.count or 0
-                local have = GetCurrentReagentHaveCount(reagent, bagCountsByID, bagCountsByName)
-                local unitCost = reagent.unitCost or 0
-                local lineSubtotal = unitCost * need
+            for recipeIndex, entry in ipairs(ProfitCraft_ShoppingList) do
+                local recipeName = entry.recipeName or "Unknown Recipe"
+                local professionName = entry.profession
+                local searchName = recipeName
 
-                local color = "|cFFFF4444"
-                if have >= need then
-                    color = "|cFF00FF00"
-                elseif have > 0 then
-                    color = "|cFFFFFF00"
+                if entry.recipe and entry.recipe.name then
+                    recipeName = entry.recipe.name
+                    if entry.recipe.profession then
+                        professionName = entry.recipe.profession
+                    end
+                    local resolvedSearchName = GetRecipeSearchName(entry.recipe)
+                    if resolvedSearchName and resolvedSearchName ~= "" then
+                        searchName = resolvedSearchName
+                    end
+                end
+
+                local professionSuffix = ""
+                local shortProfession = GetProfessionShortName(professionName)
+                if shortProfession then
+                    professionSuffix = " |cFF777777[" .. shortProfession .. "]|r"
                 end
 
                 table.insert(rows, {
-                    type = "reagent",
-                    text = "  " .. color .. have .. "/" .. need .. "|r  " .. (reagent.name or "Unknown")
-                        .. "  " .. ProfitCraft_FormatCurrencyNeutral(unitCost)
-                        .. " x" .. need .. " = " .. ProfitCraft_FormatCurrencyNeutral(lineSubtotal),
-                    searchName = reagent.name,
+                    type = "recipe",
+                    recipeIndex = recipeIndex,
+                    searchName = searchName,
+                    text = "|cFFFFD100" .. recipeName .. "|r" .. professionSuffix
+                        .. "  |cFFFFFFFFx" .. (entry.qty or 1) .. "|r",
                 })
+
+                local reagentCount = 0
+                if entry.recipe and entry.recipe.reagents then
+                    reagentCount = table.getn(entry.recipe.reagents)
+                end
+
+                if reagentCount == 0 then
+                    table.insert(rows, {
+                        type = "reagent",
+                        text = "  |cFF888888No reagent data|r",
+                    })
+                else
+                    for _, reagent in ipairs(entry.recipe.reagents) do
+                        local need = (reagent.count or 0) * (entry.qty or 1)
+                        local have = GetCurrentReagentHaveCount(reagent, bagCountsByID, bagCountsByName)
+                        local unitCost = reagent.unitCost or 0
+                        local lineSubtotal = unitCost * need
+
+                        local color = "|cFFFF4444"
+                        if have >= need then
+                            color = "|cFF00FF00"
+                        elseif have > 0 then
+                            color = "|cFFFFFF00"
+                        end
+
+                        table.insert(rows, {
+                            type = "reagent",
+                            text = "  " .. color .. have .. "/" .. need .. "|r  " .. (reagent.name or "Unknown")
+                                .. "  " .. ProfitCraft_FormatCurrencyNeutral(unitCost)
+                                .. " x" .. need .. " = " .. ProfitCraft_FormatCurrencyNeutral(lineSubtotal),
+                            searchName = reagent.name,
+                        })
+                    end
+                end
+            end
+        end
+    else
+        if not selected then
+            table.insert(rows, {
+                type = "info",
+                text = "|cFF888888Click a recipe above to view details|r",
+            })
+        else
+            local shoppingEntry = GetShoppingListEntryByKey(ProfitCraft_SelectedRecipeKey)
+            local selectedQty = 0
+            if shoppingEntry and shoppingEntry.qty then
+                selectedQty = shoppingEntry.qty
+            end
+
+            local professionSuffix = ""
+            local shortProfession = GetProfessionShortName(selected.profession)
+            if shortProfession then
+                professionSuffix = " |cFF777777[" .. shortProfession .. "]|r"
+            end
+
+            local learnedText = "|cFFFFCC66Unlearned|r"
+            if selected.isLearned then
+                learnedText = "|cFF00FF00Learned|r"
+            end
+
+            table.insert(rows, {
+                type = "recipe",
+                text = "|cFFFFD100" .. (selected.name or "Unknown Recipe") .. "|r" .. professionSuffix,
+                searchName = GetRecipeSearchName(selected),
+            })
+            table.insert(rows, {
+                type = "meta",
+                text = "  |cFFAAAAAAStatus:|r " .. learnedText
+                    .. "  |cFFAAAAAAIn List:|r " .. selectedQty,
+            })
+            table.insert(rows, {
+                type = "meta",
+                text = "  |cFFAAAAAAMarket Value:|r " .. ProfitCraft_FormatCurrencyNeutral(selected.marketValue),
+            })
+            table.insert(rows, {
+                type = "meta",
+                text = "  |cFFAAAAAACraft Cost:|r " .. ProfitCraft_FormatCurrencyNeutral(selected.cost),
+            })
+            table.insert(rows, {
+                type = "meta",
+                text = "  |cFFAAAAAAProfit:|r " .. ProfitCraft_FormatCurrency(selected.profit),
+            })
+
+            if selected.source and selected.source ~= "" then
+                table.insert(rows, {
+                    type = "meta",
+                    text = "  |cFFAAAAAASource:|r " .. selected.source,
+                })
+            end
+
+            if selected.sourceDetails and selected.sourceDetails ~= "" then
+                table.insert(rows, {
+                    type = "meta",
+                    text = "  |cFFAAAAAADetails:|r " .. selected.sourceDetails,
+                })
+            end
+
+            table.insert(rows, {
+                type = "header",
+                text = "|cFFFFFFCCReagents|r",
+            })
+
+            local reagentCount = 0
+            if selected.reagents then
+                reagentCount = table.getn(selected.reagents)
+            end
+
+            if reagentCount == 0 then
+                table.insert(rows, {
+                    type = "reagent",
+                    text = "  |cFF888888No reagent data|r",
+                })
+            else
+                for _, reagent in ipairs(selected.reagents) do
+                    local need = reagent.count or 0
+                    local have = GetCurrentReagentHaveCount(reagent, bagCountsByID, bagCountsByName)
+                    local unitCost = reagent.unitCost or 0
+                    local lineSubtotal = unitCost * need
+
+                    local color = "|cFFFF4444"
+                    if have >= need then
+                        color = "|cFF00FF00"
+                    elseif have > 0 then
+                        color = "|cFFFFFF00"
+                    end
+
+                    table.insert(rows, {
+                        type = "reagent",
+                        text = "  " .. color .. have .. "/" .. need .. "|r  " .. (reagent.name or "Unknown")
+                            .. "  " .. ProfitCraft_FormatCurrencyNeutral(unitCost)
+                            .. " x" .. need .. " = " .. ProfitCraft_FormatCurrencyNeutral(lineSubtotal),
+                        searchName = reagent.name,
+                    })
+                end
             end
         end
     end
@@ -1291,15 +1391,29 @@ function ProfitCraft_UpdateTracker()
             local rowData = rows[offset + i]
             if rowData then
                 textFs:SetText(rowData.text or "")
-                minusBtn:Hide()
-                plusBtn:Hide()
-                removeBtn:Hide()
+                local showLineControls = isShoppingView and rowData.type == "recipe" and rowData.recipeIndex
+                if showLineControls then
+                    minusBtn.recipeIndex = rowData.recipeIndex
+                    plusBtn.recipeIndex = rowData.recipeIndex
+                    removeBtn.recipeIndex = rowData.recipeIndex
+                    minusBtn:Show()
+                    plusBtn:Show()
+                    removeBtn:Show()
+                else
+                    minusBtn:Hide()
+                    plusBtn:Hide()
+                    removeBtn:Hide()
+                end
 
                 local canSearch = IsAuxSearchReady()
                 if rowData.searchName and rowData.searchName ~= "" then
                     textFs:ClearAllPoints()
                     textFs:SetPoint("LEFT", row, "LEFT", 32, 0)
-                    textFs:SetWidth(494)
+                    if showLineControls then
+                        textFs:SetWidth(430)
+                    else
+                        textFs:SetWidth(494)
+                    end
                     searchBtn.searchName = rowData.searchName
                     if canSearch then
                         searchBtn:Enable()
@@ -1316,6 +1430,9 @@ function ProfitCraft_UpdateTracker()
 
                 row:Show()
             else
+                minusBtn:Hide()
+                plusBtn:Hide()
+                removeBtn:Hide()
                 searchBtn:Hide()
                 row:Hide()
             end
