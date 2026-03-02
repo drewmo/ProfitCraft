@@ -516,7 +516,7 @@
                 </Layers>
             </Frame>
 
-            <!-- ============ Shopping List Tracker ============ -->
+            <!-- ============ Recipe Detail Pane ============ -->
             <Frame name="ProfitCraftTracker">
                 <Size>
                     <AbsDimension x="570" y="220" />
@@ -530,7 +530,7 @@
                 </Anchors>
                 <Layers>
                     <Layer level="ARTWORK">
-                        <FontString name="ProfitCraftTrackerTitle" inherits="GameFontNormal" text="Shopping List" justifyH="LEFT">
+                        <FontString name="ProfitCraftTrackerTitle" inherits="GameFontNormal" text="Recipe Details" justifyH="LEFT">
                             <Anchors>
                                 <Anchor point="TOPLEFT">
                                     <Offset>
@@ -542,6 +542,21 @@
                     </Layer>
                 </Layers>
                 <Frames>
+                    <Button name="ProfitCraftTrackerAddButton" inherits="UIPanelButtonTemplate" text="Add to Shopping">
+                        <Size>
+                            <AbsDimension x="140" y="20"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPRIGHT" relativeTo="ProfitCraftTracker">
+                                <Offset>
+                                    <AbsDimension x="-6" y="2"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>ProfitCraft_AddSelectedRecipeToShoppingList();</OnClick>
+                        </Scripts>
+                    </Button>
                     <Button name="ProfitCraftTrackerMinus">
                         <Size>
                             <AbsDimension x="22" y="22"/>

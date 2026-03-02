@@ -24,6 +24,8 @@ ProfitCraft_Filters = {
 -- Multi-item shopping list: { {recipe=<data>, qty=1}, ... }
 ProfitCraft_ShoppingList = ProfitCraft_ShoppingList or {}
 ProfitCraft_ShoppingListMax = 4
+ProfitCraft_SelectedRecipe = ProfitCraft_SelectedRecipe or nil
+ProfitCraft_SelectedRecipeKey = ProfitCraft_SelectedRecipeKey or nil
 
 local NUM_DISPLAY_ROWS = 11
 local TRACKER_ROW_HEIGHT = 18
@@ -204,6 +206,62 @@ end
 local function PersistShoppingList()
     if ProfitCraft_SaveShoppingList then
         ProfitCraft_SaveShoppingList(ProfitCraft_ShoppingList)
+    end
+end
+
+local function GetShoppingListEntryByKey(recipeKey)
+    if not recipeKey then return nil end
+
+    for _, entry in ipairs(ProfitCraft_ShoppingList) do
+        local entryKey = GetShoppingEntryLookupKey(entry)
+        if entryKey and entryKey == recipeKey then
+            return entry
+        end
+    end
+
+    return nil
+end
+
+local function SyncSelectedRecipeWithCurrentList()
+    if not ProfitCraft_SelectedRecipeKey then
+        ProfitCraft_SelectedRecipe = nil
+        return
+    end
+
+    for _, recipe in ipairs(ProfitCraft_List) do
+        local key = BuildRecipeLookupKey(recipe)
+        if key and key == ProfitCraft_SelectedRecipeKey then
+            ProfitCraft_SelectedRecipe = recipe
+            return
+        end
+    end
+
+    ProfitCraft_SelectedRecipe = nil
+    ProfitCraft_SelectedRecipeKey = nil
+end
+
+local function RefreshDetailAddButton()
+    local button = ProfitCraftTrackerAddButton
+    if not button then return end
+
+    if not ProfitCraft_SelectedRecipe then
+        button:Disable()
+        button:SetText("Add to Shopping")
+        return
+    end
+
+    local selectedKey = BuildRecipeLookupKey(ProfitCraft_SelectedRecipe)
+    local shoppingEntry = GetShoppingListEntryByKey(selectedKey)
+    local currentQty = 0
+    if shoppingEntry and shoppingEntry.qty then
+        currentQty = shoppingEntry.qty
+    end
+
+    button:Enable()
+    if currentQty > 0 then
+        button:SetText("Add to Shopping (" .. currentQty .. ")")
+    else
+        button:SetText("Add to Shopping")
     end
 end
 
@@ -428,9 +486,12 @@ function ProfitCraft_Dashboard_OnLoad(frame)
     ConfigureStaticCheckboxLabels()
     ProfitCraft_RefreshSettingsUI()
 
-    -- Legacy top controls are replaced by per-recipe row controls in the scroll list.
+    -- Legacy top controls are replaced by the explicit detail-pane add button.
     if ProfitCraftTrackerMinus then ProfitCraftTrackerMinus:Hide() end
     if ProfitCraftTrackerPlus then ProfitCraftTrackerPlus:Hide() end
+    if ProfitCraftTrackerAddButton then
+        ProfitCraftTrackerAddButton:Disable()
+    end
 
     local tracker = ProfitCraftTracker
     if not tracker then return end
@@ -503,6 +564,9 @@ function ProfitCraft_Dashboard_OnLoad(frame)
     if ProfitCraft_SyncShoppingListRecipes then
         ProfitCraft_SyncShoppingListRecipes()
     end
+    ProfitCraft_SelectedRecipe = nil
+    ProfitCraft_SelectedRecipeKey = nil
+    RefreshDetailAddButton()
     ProfitCraft_UpdateTracker()
 end
 
@@ -671,17 +735,9 @@ function ProfitCraft_DashboardUpdate()
 
                 button.dataIndex = index
 
-                -- Highlight items in shopping list
-                local inList = false
                 local dataKey = BuildRecipeLookupKey(data)
-                for _, entry in ipairs(ProfitCraft_ShoppingList) do
-                    local shoppingKey = GetShoppingEntryLookupKey(entry)
-                    if dataKey and shoppingKey and shoppingKey == dataKey then
-                        inList = true
-                        break
-                    end
-                end
-                if inList then
+                local isSelected = dataKey and ProfitCraft_SelectedRecipeKey and dataKey == ProfitCraft_SelectedRecipeKey
+                if isSelected then
                     button:LockHighlight()
                 else
                     button:UnlockHighlight()
@@ -704,42 +760,10 @@ function ProfitCraft_OnEntryClick(btn)
     local data = ProfitCraft_FilteredList[btn.dataIndex]
     if not data then return end
 
-    local targetKey = BuildRecipeLookupKey(data)
-
-    -- Check if already in the shopping list
-    for _, entry in ipairs(ProfitCraft_ShoppingList) do
-        local entryKey = GetShoppingEntryLookupKey(entry)
-        if targetKey and entryKey and targetKey == entryKey then
-            -- Increment quantity instead of adding a duplicate
-            entry.qty = entry.qty + 1
-            if entry.qty > 99 then entry.qty = 99 end
-            entry.recipe = data
-            entry.recipeName = data.name
-            entry.profession = data.profession
-            PersistShoppingList()
-            ProfitCraft_UpdateTracker()
-            ProfitCraft_ApplySortAndFilter()
-            ProfitCraft_DashboardUpdate()
-            return
-        end
-    end
-
-    -- Add new entry if there's room
-    if table.getn(ProfitCraft_ShoppingList) >= ProfitCraft_ShoppingListMax then
-        DEFAULT_CHAT_FRAME:AddMessage("|cFFFF8800[ProfitCraft]|r Shopping list full (max " .. ProfitCraft_ShoppingListMax .. "). Remove an item first.")
-        return
-    end
-
-    table.insert(ProfitCraft_ShoppingList, {
-        recipe = data,
-        recipeName = data.name,
-        profession = data.profession,
-        qty = 1,
-    })
-
-    PersistShoppingList()
+    ProfitCraft_SelectedRecipe = data
+    ProfitCraft_SelectedRecipeKey = BuildRecipeLookupKey(data)
+    RefreshDetailAddButton()
     ProfitCraft_UpdateTracker()
-    ProfitCraft_ApplySortAndFilter()
     ProfitCraft_DashboardUpdate()
 end
 
@@ -785,7 +809,7 @@ function ProfitCraft_OnEntryEnter(btn)
     end
 
     GameTooltip:AddLine(" ")
-    GameTooltip:AddLine("|cFF888888Click to add to Shopping List|r")
+    GameTooltip:AddLine("|cFF888888Click to view details below|r")
     GameTooltip:Show()
 end
 
@@ -793,10 +817,50 @@ end
 -- Multi-Item Shopping List
 -- ============================================================================
 
+function ProfitCraft_AddSelectedRecipeToShoppingList()
+    if not ProfitCraft_SelectedRecipe then
+        return
+    end
+
+    local data = ProfitCraft_SelectedRecipe
+    local targetKey = BuildRecipeLookupKey(data)
+    if not targetKey then
+        return
+    end
+
+    local existing = GetShoppingListEntryByKey(targetKey)
+    if existing then
+        existing.qty = (existing.qty or 1) + 1
+        if existing.qty > 99 then existing.qty = 99 end
+        existing.recipe = data
+        existing.recipeName = data.name
+        existing.profession = data.profession
+    else
+        if table.getn(ProfitCraft_ShoppingList) >= ProfitCraft_ShoppingListMax then
+            DEFAULT_CHAT_FRAME:AddMessage("|cFFFF8800[ProfitCraft]|r Shopping list full (max " .. ProfitCraft_ShoppingListMax .. "). Remove an item first.")
+            return
+        end
+
+        table.insert(ProfitCraft_ShoppingList, {
+            recipe = data,
+            recipeName = data.name,
+            profession = data.profession,
+            qty = 1,
+        })
+    end
+
+    PersistShoppingList()
+    RefreshDetailAddButton()
+    ProfitCraft_UpdateTracker()
+    ProfitCraft_ApplySortAndFilter()
+    ProfitCraft_DashboardUpdate()
+end
+
 function ProfitCraft_RemoveFromShoppingList(index)
     if ProfitCraft_ShoppingList[index] then
         table.remove(ProfitCraft_ShoppingList, index)
         PersistShoppingList()
+        RefreshDetailAddButton()
         ProfitCraft_UpdateTracker()
         ProfitCraft_ApplySortAndFilter()
         ProfitCraft_DashboardUpdate()
@@ -816,6 +880,7 @@ function ProfitCraft_AdjustShoppingListQty(index, delta)
     entry.qty = ClampShoppingQty((entry.qty or 1) + (delta or 0))
 
     PersistShoppingList()
+    RefreshDetailAddButton()
     ProfitCraft_UpdateTracker()
     ProfitCraft_ApplySortAndFilter()
     ProfitCraft_DashboardUpdate()
@@ -824,6 +889,7 @@ end
 function ProfitCraft_ClearShoppingList()
     ProfitCraft_ShoppingList = {}
     PersistShoppingList()
+    RefreshDetailAddButton()
     ProfitCraft_UpdateTracker()
     ProfitCraft_ApplySortAndFilter()
     ProfitCraft_DashboardUpdate()
@@ -861,74 +927,110 @@ function ProfitCraft_SyncShoppingListRecipes()
     end
 
     PersistShoppingList()
+    RefreshDetailAddButton()
 end
 
 function ProfitCraft_UpdateTracker()
-    local count = table.getn(ProfitCraft_ShoppingList)
     local titleFs = getglobal("ProfitCraftTrackerTitle")
-    if titleFs then titleFs:SetText("Shopping List") end
+    if titleFs then titleFs:SetText("Recipe Details") end
+
+    SyncSelectedRecipeWithCurrentList()
+    RefreshDetailAddButton()
+    local selected = ProfitCraft_SelectedRecipe
 
     local rows = {}
     local bagCountsByID, bagCountsByName = BuildCurrentBagCounts()
 
-    if count == 0 then
+    if not selected then
         table.insert(rows, {
             type = "info",
-            text = "|cFF888888Click recipes above to add|r",
-            recipeIndex = nil,
+            text = "|cFF888888Click a recipe above to view details|r",
         })
     else
-        for recipeIndex, entry in ipairs(ProfitCraft_ShoppingList) do
-            local recipeName = entry.recipeName or "Unknown Recipe"
-            local professionName = entry.profession
-            if entry.recipe and entry.recipe.name then
-                recipeName = entry.recipe.name
-                if entry.recipe.profession then
-                    professionName = entry.recipe.profession
-                end
-            end
+        local shoppingEntry = GetShoppingListEntryByKey(ProfitCraft_SelectedRecipeKey)
+        local selectedQty = 0
+        if shoppingEntry and shoppingEntry.qty then
+            selectedQty = shoppingEntry.qty
+        end
 
-            local professionSuffix = ""
-            local shortProfession = GetProfessionShortName(professionName)
-            if shortProfession then
-                professionSuffix = " |cFF777777[" .. shortProfession .. "]|r"
-            end
+        local professionSuffix = ""
+        local shortProfession = GetProfessionShortName(selected.profession)
+        if shortProfession then
+            professionSuffix = " |cFF777777[" .. shortProfession .. "]|r"
+        end
 
+        local learnedText = "|cFFFFCC66Unlearned|r"
+        if selected.isLearned then
+            learnedText = "|cFF00FF00Learned|r"
+        end
+
+        table.insert(rows, {
+            type = "recipe",
+            text = "|cFFFFD100" .. (selected.name or "Unknown Recipe") .. "|r" .. professionSuffix,
+        })
+        table.insert(rows, {
+            type = "meta",
+            text = "  |cFFAAAAAAStatus:|r " .. learnedText
+                .. "  |cFFAAAAAAIn List:|r " .. selectedQty,
+        })
+        table.insert(rows, {
+            type = "meta",
+            text = "  |cFFAAAAAAMarket Value:|r " .. ProfitCraft_FormatCurrencyNeutral(selected.marketValue),
+        })
+        table.insert(rows, {
+            type = "meta",
+            text = "  |cFFAAAAAACraft Cost:|r " .. ProfitCraft_FormatCurrencyNeutral(selected.cost),
+        })
+        table.insert(rows, {
+            type = "meta",
+            text = "  |cFFAAAAAAProfit:|r " .. ProfitCraft_FormatCurrency(selected.profit),
+        })
+
+        if selected.source and selected.source ~= "" then
             table.insert(rows, {
-                type = "recipe",
-                text = "|cFFFFD100" .. recipeName .. "|r" .. professionSuffix .. "  |cFFFFFFFFx" .. entry.qty .. "|r",
-                recipeIndex = recipeIndex,
+                type = "meta",
+                text = "  |cFFAAAAAASource:|r " .. selected.source,
             })
+        end
 
-            local reagentCount = 0
-            if entry.recipe and entry.recipe.reagents then
-                reagentCount = table.getn(entry.recipe.reagents)
-            end
+        if selected.sourceDetails and selected.sourceDetails ~= "" then
+            table.insert(rows, {
+                type = "meta",
+                text = "  |cFFAAAAAADetails:|r " .. selected.sourceDetails,
+            })
+        end
 
-            if reagentCount == 0 then
+        table.insert(rows, {
+            type = "header",
+            text = "|cFFFFFFCCReagents|r",
+        })
+
+        local reagentCount = 0
+        if selected.reagents then
+            reagentCount = table.getn(selected.reagents)
+        end
+
+        if reagentCount == 0 then
+            table.insert(rows, {
+                type = "reagent",
+                text = "  |cFF888888No reagent data|r",
+            })
+        else
+            for _, reagent in ipairs(selected.reagents) do
+                local need = reagent.count or 0
+                local have = GetCurrentReagentHaveCount(reagent, bagCountsByID, bagCountsByName)
+
+                local color = "|cFFFF4444"
+                if have >= need then
+                    color = "|cFF00FF00"
+                elseif have > 0 then
+                    color = "|cFFFFFF00"
+                end
+
                 table.insert(rows, {
                     type = "reagent",
-                    text = "  |cFF888888No reagent data|r",
-                    recipeIndex = nil,
+                    text = "  " .. color .. have .. "/" .. need .. "|r  " .. (reagent.name or "Unknown"),
                 })
-            else
-                for _, reagent in ipairs(entry.recipe.reagents) do
-                    local need = (reagent.count or 0) * (entry.qty or 1)
-                    local have = GetCurrentReagentHaveCount(reagent, bagCountsByID, bagCountsByName)
-
-                    local color = "|cFFFF4444"
-                    if have >= need then
-                        color = "|cFF00FF00"
-                    elseif have > 0 then
-                        color = "|cFFFFFF00"
-                    end
-
-                    table.insert(rows, {
-                        type = "reagent",
-                        text = "  " .. color .. have .. "/" .. need .. "|r  " .. (reagent.name or "Unknown"),
-                        recipeIndex = nil,
-                    })
-                end
             end
         end
     end
@@ -955,19 +1057,9 @@ function ProfitCraft_UpdateTracker()
             local rowData = rows[offset + i]
             if rowData then
                 textFs:SetText(rowData.text or "")
-
-                if rowData.type == "recipe" and rowData.recipeIndex then
-                    minusBtn.recipeIndex = rowData.recipeIndex
-                    plusBtn.recipeIndex = rowData.recipeIndex
-                    removeBtn.recipeIndex = rowData.recipeIndex
-                    minusBtn:Show()
-                    plusBtn:Show()
-                    removeBtn:Show()
-                else
-                    minusBtn:Hide()
-                    plusBtn:Hide()
-                    removeBtn:Hide()
-                end
+                minusBtn:Hide()
+                plusBtn:Hide()
+                removeBtn:Hide()
 
                 row:Show()
             else
