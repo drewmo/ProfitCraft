@@ -330,7 +330,7 @@
                             </Anchor>
                         </Anchors>
                     </Frame>
-                    <!-- Learned checkbox at x=0 -->
+                    <!-- Learned checkbox -->
                     <CheckButton name="ProfitCraftFilterLearned" inherits="UICheckButtonTemplate">
                         <Size>
                             <AbsDimension x="24" y="24"/>
@@ -338,7 +338,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
                                 <Offset>
-                                    <AbsDimension x="128" y="-1"/>
+                                    <AbsDimension x="156" y="-1"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -348,7 +348,7 @@
                             </OnClick>
                         </Scripts>
                     </CheckButton>
-                    <!-- Unlearned checkbox at x=130 -->
+                    <!-- Unlearned checkbox -->
                     <CheckButton name="ProfitCraftFilterUnlearned" inherits="UICheckButtonTemplate">
                         <Size>
                             <AbsDimension x="24" y="24"/>
@@ -356,7 +356,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
                                 <Offset>
-                                    <AbsDimension x="216" y="-1"/>
+                                    <AbsDimension x="244" y="-1"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -366,7 +366,7 @@
                             </OnClick>
                         </Scripts>
                     </CheckButton>
-                    <!-- Quest checkbox at x=280 -->
+                    <!-- Quest checkbox -->
                     <CheckButton name="ProfitCraftFilterQuest" inherits="UICheckButtonTemplate">
                         <Size>
                             <AbsDimension x="24" y="24"/>
@@ -374,7 +374,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
                                 <Offset>
-                                    <AbsDimension x="318" y="-1"/>
+                                    <AbsDimension x="346" y="-1"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -384,7 +384,7 @@
                             </OnClick>
                         </Scripts>
                     </CheckButton>
-                    <!-- Shopping-only checkbox at x=380 -->
+                    <!-- Shopping-only checkbox -->
                     <CheckButton name="ProfitCraftFilterShoppingOnly" inherits="UICheckButtonTemplate">
                         <Size>
                             <AbsDimension x="24" y="24"/>
@@ -392,7 +392,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
                                 <Offset>
-                                    <AbsDimension x="396" y="-1"/>
+                                    <AbsDimension x="424" y="-1"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
