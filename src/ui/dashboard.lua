@@ -30,6 +30,10 @@ ProfitCraft_SelectedRecipeKey = ProfitCraft_SelectedRecipeKey or nil
 local NUM_DISPLAY_ROWS = 11
 local TRACKER_ROW_HEIGHT = 18
 local TRACKER_DISPLAY_ROWS = 10
+local TRACKER_TABLE_COL_HAVE_WIDTH = 52
+local TRACKER_TABLE_COL_QTY_WIDTH = 76
+local TRACKER_TABLE_COL_UNIT_WIDTH = 120
+local TRACKER_TABLE_COL_SUBTOTAL_WIDTH = 120
 
 local PROFESSION_SHORT_NAMES = {
     ["Alchemy"] = "Alch",
@@ -749,6 +753,34 @@ function ProfitCraft_Dashboard_OnLoad(frame)
         valueFs:SetPoint("RIGHT", row, "RIGHT", -2, 0)
         valueFs:SetText("")
 
+        local subtotalFs = row:CreateFontString("ProfitCraftTrackerRow"..i.."Subtotal", "ARTWORK", "GameFontHighlightSmall")
+        subtotalFs:SetJustifyH("RIGHT")
+        subtotalFs:SetWidth(TRACKER_TABLE_COL_SUBTOTAL_WIDTH)
+        subtotalFs:SetPoint("RIGHT", row, "RIGHT", -2, 0)
+        subtotalFs:SetText("")
+        subtotalFs:Hide()
+
+        local unitFs = row:CreateFontString("ProfitCraftTrackerRow"..i.."Unit", "ARTWORK", "GameFontHighlightSmall")
+        unitFs:SetJustifyH("RIGHT")
+        unitFs:SetWidth(TRACKER_TABLE_COL_UNIT_WIDTH)
+        unitFs:SetPoint("RIGHT", subtotalFs, "LEFT", -8, 0)
+        unitFs:SetText("")
+        unitFs:Hide()
+
+        local qtyFs = row:CreateFontString("ProfitCraftTrackerRow"..i.."Qty", "ARTWORK", "GameFontHighlightSmall")
+        qtyFs:SetJustifyH("RIGHT")
+        qtyFs:SetWidth(TRACKER_TABLE_COL_QTY_WIDTH)
+        qtyFs:SetPoint("RIGHT", unitFs, "LEFT", -8, 0)
+        qtyFs:SetText("")
+        qtyFs:Hide()
+
+        local haveFs = row:CreateFontString("ProfitCraftTrackerRow"..i.."Have", "ARTWORK", "GameFontHighlightSmall")
+        haveFs:SetJustifyH("RIGHT")
+        haveFs:SetWidth(TRACKER_TABLE_COL_HAVE_WIDTH)
+        haveFs:SetPoint("RIGHT", qtyFs, "LEFT", -8, 0)
+        haveFs:SetText("")
+        haveFs:Hide()
+
         local minusBtn = CreateFrame("Button", "ProfitCraftTrackerRow"..i.."Minus", row)
         minusBtn:SetWidth(16)
         minusBtn:SetHeight(16)
@@ -1271,6 +1303,7 @@ function ProfitCraft_UpdateTracker()
                 text = "|cFF888888Shopping list is empty. Add recipes from detail view.|r",
             })
         else
+            local shoppingGrandTotal = 0
             for recipeIndex, entry in ipairs(ProfitCraft_ShoppingList) do
                 local recipeName = entry.recipeName or "Unknown Recipe"
                 local professionName = entry.profession
@@ -1312,11 +1345,23 @@ function ProfitCraft_UpdateTracker()
                         text = "  |cFF888888No reagent data|r",
                     })
                 else
+                    table.insert(rows, {
+                        type = "tableHeader",
+                        useTableCols = true,
+                        text = "  |cFFCCCCCCReagent|r",
+                        colHave = "|cFFCCCCCCHave|r",
+                        colQty = "|cFFCCCCCCCraft Qty|r",
+                        colUnit = "|cFFCCCCCCUnit|r",
+                        colSubtotal = "|cFFCCCCCCSubtotal|r",
+                    })
+
+                    local recipeTotal = 0
                     for _, reagent in ipairs(entry.recipe.reagents) do
                         local need = (reagent.count or 0) * (entry.qty or 1)
                         local have = GetCurrentReagentHaveCount(reagent, bagCountsByID, bagCountsByName)
                         local unitCost = reagent.unitCost or 0
                         local lineSubtotal = unitCost * need
+                        recipeTotal = recipeTotal + lineSubtotal
 
                         local color = "|cFFFF4444"
                         if have >= need then
@@ -1327,14 +1372,37 @@ function ProfitCraft_UpdateTracker()
 
                         table.insert(rows, {
                             type = "reagent",
-                            text = "  " .. color .. have .. "/" .. need .. "|r  " .. (reagent.name or "Unknown"),
-                            rightText = ProfitCraft_FormatCurrencyNeutral(unitCost)
-                                .. " x" .. need .. " = " .. ProfitCraft_FormatCurrencyNeutral(lineSubtotal),
+                            useTableCols = true,
+                            text = "  " .. (reagent.name or "Unknown"),
+                            colHave = color .. have .. "|r",
+                            colQty = "|cFFFFFFFF" .. need .. "|r",
+                            colUnit = ProfitCraft_FormatCurrencyNeutral(unitCost),
+                            colSubtotal = ProfitCraft_FormatCurrencyNeutral(lineSubtotal),
                             searchName = reagent.name,
                         })
                     end
+
+                    shoppingGrandTotal = shoppingGrandTotal + recipeTotal
+                    table.insert(rows, {
+                        type = "tableTotal",
+                        useTableCols = true,
+                        text = "  |cFFFFFFCCRecipe Total|r",
+                        colSubtotal = ProfitCraft_FormatCurrencyNeutral(recipeTotal),
+                    })
                 end
+
+                table.insert(rows, {
+                    type = "spacer",
+                    text = " ",
+                })
             end
+
+            table.insert(rows, {
+                type = "tableTotal",
+                useTableCols = true,
+                text = "|cFFFFFFCCShopping Total|r",
+                colSubtotal = ProfitCraft_FormatCurrencyNeutral(shoppingGrandTotal),
+            })
         end
     else
         if not selected then
@@ -1413,11 +1481,23 @@ function ProfitCraft_UpdateTracker()
                     text = "  |cFF888888No reagent data|r",
                 })
             else
+                table.insert(rows, {
+                    type = "tableHeader",
+                    useTableCols = true,
+                    text = "  |cFFCCCCCCReagent|r",
+                    colHave = "|cFFCCCCCCHave|r",
+                    colQty = "|cFFCCCCCCCraft Qty|r",
+                    colUnit = "|cFFCCCCCCUnit|r",
+                    colSubtotal = "|cFFCCCCCCSubtotal|r",
+                })
+
+                local recipeTotal = 0
                 for _, reagent in ipairs(selected.reagents) do
                     local need = reagent.count or 0
                     local have = GetCurrentReagentHaveCount(reagent, bagCountsByID, bagCountsByName)
                     local unitCost = reagent.unitCost or 0
                     local lineSubtotal = unitCost * need
+                    recipeTotal = recipeTotal + lineSubtotal
 
                     local color = "|cFFFF4444"
                     if have >= need then
@@ -1428,12 +1508,22 @@ function ProfitCraft_UpdateTracker()
 
                     table.insert(rows, {
                         type = "reagent",
-                        text = "  " .. color .. have .. "/" .. need .. "|r  " .. (reagent.name or "Unknown"),
-                        rightText = ProfitCraft_FormatCurrencyNeutral(unitCost)
-                            .. " x" .. need .. " = " .. ProfitCraft_FormatCurrencyNeutral(lineSubtotal),
+                        useTableCols = true,
+                        text = "  " .. (reagent.name or "Unknown"),
+                        colHave = color .. have .. "|r",
+                        colQty = "|cFFFFFFFF" .. need .. "|r",
+                        colUnit = ProfitCraft_FormatCurrencyNeutral(unitCost),
+                        colSubtotal = ProfitCraft_FormatCurrencyNeutral(lineSubtotal),
                         searchName = reagent.name,
                     })
                 end
+
+                table.insert(rows, {
+                    type = "tableTotal",
+                    useTableCols = true,
+                    text = "  |cFFFFFFCCReagent Total|r",
+                    colSubtotal = ProfitCraft_FormatCurrencyNeutral(recipeTotal),
+                })
             end
         end
     end
@@ -1453,16 +1543,19 @@ function ProfitCraft_UpdateTracker()
         local row = getglobal("ProfitCraftTrackerRow"..i)
         local textFs = getglobal("ProfitCraftTrackerRow"..i.."Text")
         local valueFs = getglobal("ProfitCraftTrackerRow"..i.."Value")
+        local haveFs = getglobal("ProfitCraftTrackerRow"..i.."Have")
+        local qtyFs = getglobal("ProfitCraftTrackerRow"..i.."Qty")
+        local unitFs = getglobal("ProfitCraftTrackerRow"..i.."Unit")
+        local subtotalFs = getglobal("ProfitCraftTrackerRow"..i.."Subtotal")
         local minusBtn = getglobal("ProfitCraftTrackerRow"..i.."Minus")
         local plusBtn = getglobal("ProfitCraftTrackerRow"..i.."Plus")
         local removeBtn = getglobal("ProfitCraftTrackerRow"..i.."Remove")
         local searchBtn = getglobal("ProfitCraftTrackerRow"..i.."Search")
 
-        if row and textFs and valueFs and minusBtn and plusBtn and removeBtn and searchBtn then
+        if row and textFs and valueFs and haveFs and qtyFs and unitFs and subtotalFs and minusBtn and plusBtn and removeBtn and searchBtn then
             local rowData = rows[offset + i]
             if rowData then
                 textFs:SetText(rowData.text or "")
-                valueFs:SetText(rowData.rightText or "")
                 local showLineControls = isShoppingView and rowData.type == "recipe" and rowData.recipeIndex
                 if showLineControls then
                     minusBtn.recipeIndex = rowData.recipeIndex
@@ -1478,9 +1571,8 @@ function ProfitCraft_UpdateTracker()
                 end
 
                 local canSearch = IsAuxSearchReady()
-                if rowData.searchName and rowData.searchName ~= "" then
-                    textFs:ClearAllPoints()
-                    textFs:SetPoint("LEFT", row, "LEFT", 32, 0)
+                local hasSearch = rowData.searchName and rowData.searchName ~= ""
+                if hasSearch then
                     searchBtn.searchName = rowData.searchName
                     if canSearch then
                         searchBtn:Enable()
@@ -1489,41 +1581,66 @@ function ProfitCraft_UpdateTracker()
                     end
                     searchBtn:Show()
                 else
-                    textFs:ClearAllPoints()
-                    textFs:SetPoint("LEFT", row, "LEFT", 2, 0)
                     searchBtn:Hide()
                 end
 
-                local hasRightColumn = rowData.rightText and rowData.rightText ~= ""
                 local leftStartX = 2
-                if rowData.searchName and rowData.searchName ~= "" then
+                if hasSearch then
                     leftStartX = 32
                 end
 
-                if hasRightColumn then
-                    local valueRightOffset = -2
-                    local rightLimitX = 530
-                    if showLineControls then
-                        valueRightOffset = -72
-                        rightLimitX = 460
-                    end
-
-                    valueFs:ClearAllPoints()
-                    valueFs:SetPoint("RIGHT", row, "RIGHT", valueRightOffset, 0)
-                    valueFs:Show()
-
-                    local leftWidth = rightLimitX - leftStartX - 196
-                    if leftWidth < 80 then leftWidth = 80 end
-                    textFs:SetWidth(leftWidth)
-                else
+                local useTableCols = rowData.useTableCols and true or false
+                if useTableCols then
                     valueFs:SetText("")
                     valueFs:Hide()
 
+                    haveFs:SetText(rowData.colHave or "")
+                    qtyFs:SetText(rowData.colQty or "")
+                    unitFs:SetText(rowData.colUnit or "")
+                    subtotalFs:SetText(rowData.colSubtotal or "")
+                    haveFs:Show()
+                    qtyFs:Show()
+                    unitFs:Show()
+                    subtotalFs:Show()
+
+                    textFs:ClearAllPoints()
+                    textFs:SetWidth(0)
+                    textFs:SetPoint("LEFT", row, "LEFT", leftStartX, 0)
+                    textFs:SetPoint("RIGHT", haveFs, "LEFT", -8, 0)
+                else
+                    haveFs:SetText("")
+                    qtyFs:SetText("")
+                    unitFs:SetText("")
+                    subtotalFs:SetText("")
+                    haveFs:Hide()
+                    qtyFs:Hide()
+                    unitFs:Hide()
+                    subtotalFs:Hide()
+
+                    local hasRightColumn = rowData.rightText and rowData.rightText ~= ""
                     local rightLimitX = 530
+                    local valueRightOffset = -2
                     if showLineControls then
                         rightLimitX = 460
+                        valueRightOffset = -72
                     end
-                    textFs:SetWidth(rightLimitX - leftStartX)
+
+                    textFs:ClearAllPoints()
+                    textFs:SetPoint("LEFT", row, "LEFT", leftStartX, 0)
+
+                    if hasRightColumn then
+                        valueFs:SetText(rowData.rightText or "")
+                        valueFs:ClearAllPoints()
+                        valueFs:SetPoint("RIGHT", row, "RIGHT", valueRightOffset, 0)
+                        valueFs:Show()
+                        local leftWidth = rightLimitX - leftStartX - 196
+                        if leftWidth < 80 then leftWidth = 80 end
+                        textFs:SetWidth(leftWidth)
+                    else
+                        valueFs:SetText("")
+                        valueFs:Hide()
+                        textFs:SetWidth(rightLimitX - leftStartX)
+                    end
                 end
 
                 row:Show()
@@ -1534,6 +1651,14 @@ function ProfitCraft_UpdateTracker()
                 searchBtn:Hide()
                 valueFs:SetText("")
                 valueFs:Hide()
+                haveFs:SetText("")
+                qtyFs:SetText("")
+                unitFs:SetText("")
+                subtotalFs:SetText("")
+                haveFs:Hide()
+                qtyFs:Hide()
+                unitFs:Hide()
+                subtotalFs:Hide()
                 row:Hide()
             end
         end
