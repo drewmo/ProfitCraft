@@ -719,6 +719,17 @@ local function InitAuxAPI()
     return false
 end
 
+function ProfitCraft_HasAuxPricing()
+    return hasAux and true or false
+end
+
+function ProfitCraft_EnsureAuxPricing()
+    if hasAux then
+        return true
+    end
+    return InitAuxAPI()
+end
+
 GetAuxMarketValue = function(itemLink)
     if not hasAux or not itemLink then return 0 end
 
@@ -795,6 +806,7 @@ frame:RegisterEvent("TRAINER_UPDATE")
 frame:RegisterEvent("AUCTION_ITEM_LIST_UPDATE")
 frame:RegisterEvent("MERCHANT_SHOW")
 frame:RegisterEvent("AUCTION_HOUSE_SHOW")
+frame:RegisterEvent("AUCTION_HOUSE_CLOSED")
 
 local lastCalcTime = 0
 local CALC_THROTTLE = 1
@@ -883,6 +895,10 @@ frame:SetScript("OnEvent", function()
     elseif event == "AUCTION_HOUSE_SHOW" then
         if ProfitCraft_HandleContextAutoOpen then
             ProfitCraft_HandleContextAutoOpen("auction")
+        end
+    elseif event == "AUCTION_HOUSE_CLOSED" then
+        if ProfitCraftDashboard and ProfitCraftDashboard:IsVisible() and ProfitCraft_UpdateTracker then
+            ProfitCraft_UpdateTracker()
         end
     end
 end)

@@ -89,6 +89,128 @@ local function GetItemNameFromLink(itemLink)
     return itemName
 end
 
+local function TrimSearchText(value)
+    if not value then return nil end
+    local trimmed = string.gsub(value, "^%s+", "")
+    trimmed = string.gsub(trimmed, "%s+$", "")
+    if trimmed == "" then return nil end
+    return trimmed
+end
+
+local function PrintDashboardMessage(msg)
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage("|cFF00FF00[ProfitCraft]|r " .. msg)
+    end
+end
+
+local function IsAuctionHouseOpen()
+    return AuctionFrame and AuctionFrame.IsVisible and AuctionFrame:IsVisible()
+end
+
+local function HasAuxForSearch()
+    if ProfitCraft_HasAuxPricing and ProfitCraft_HasAuxPricing() then
+        return true
+    end
+    if Aux then
+        return true
+    end
+    if IsAddOnLoaded then
+        if IsAddOnLoaded("aux-addon") or IsAddOnLoaded("aux") then
+            return true
+        end
+    end
+    return false
+end
+
+local function IsAuxSearchReady()
+    return IsAuctionHouseOpen() and HasAuxForSearch()
+end
+
+local function GetRecipeSearchName(recipe)
+    if not recipe then return nil end
+
+    if recipe.itemLink then
+        local linkedItemName = GetItemNameFromLink(recipe.itemLink)
+        if linkedItemName and linkedItemName ~= "" then
+            return linkedItemName
+        end
+    end
+
+    return recipe.name
+end
+
+local function TrySearchViaSlash(query)
+    if not SlashCmdList then return false end
+
+    local slashHandlers = { "AUX", "AUXADDON" }
+    for _, handlerName in ipairs(slashHandlers) do
+        local handler = SlashCmdList[handlerName]
+        if type(handler) == "function" then
+            local ok = pcall(handler, query)
+            if ok then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
+local function TrySearchViaAuxNamespaces(query)
+    if not Aux then
+        return false
+    end
+
+    if Aux.search and type(Aux.search.search) == "function" then
+        local ok = pcall(Aux.search.search, query)
+        if ok then return true end
+    end
+
+    if Aux.search and type(Aux.search) == "function" then
+        local ok = pcall(Aux.search, query)
+        if ok then return true end
+    end
+
+    if Aux.cmd and type(Aux.cmd.search) == "function" then
+        local ok = pcall(Aux.cmd.search, query)
+        if ok then return true end
+    end
+
+    return false
+end
+
+local function TrySearchViaAuctionQuery(query)
+    if not QueryAuctionItems or not IsAuctionHouseOpen() then
+        return false
+    end
+
+    local ok = pcall(QueryAuctionItems, query, nil, nil, 0, false, nil, nil, nil, nil, nil)
+    return ok and true or false
+end
+
+local function ProfitCraft_TryAuxSearchByName(itemName)
+    local query = TrimSearchText(itemName)
+    if not query then
+        return false
+    end
+
+    if ProfitCraft_EnsureAuxPricing then
+        ProfitCraft_EnsureAuxPricing()
+    end
+
+    if TrySearchViaAuxNamespaces(query) then
+        return true
+    end
+    if TrySearchViaSlash(query) then
+        return true
+    end
+    if TrySearchViaAuctionQuery(query) then
+        return true
+    end
+
+    return false
+end
+
 local function BuildCurrentBagCounts()
     local countsByID = {}
     local countsByName = {}
@@ -243,7 +365,9 @@ end
 local function RefreshDetailActionButtons()
     local addButton = ProfitCraftTrackerAddButton
     local removeButton = ProfitCraftTrackerRemoveButton
-    if not addButton and not removeButton then return end
+    local searchItemButton = ProfitCraftTrackerSearchItemButton
+    local searchMatsButton = ProfitCraftTrackerSearchMatsButton
+    if not addButton and not removeButton and not searchItemButton and not searchMatsButton then return end
 
     if not ProfitCraft_SelectedRecipe then
         if addButton then
@@ -253,6 +377,12 @@ local function RefreshDetailActionButtons()
         if removeButton then
             removeButton:Disable()
             removeButton:SetText("Remove")
+        end
+        if searchItemButton then
+            searchItemButton:Disable()
+        end
+        if searchMatsButton then
+            searchMatsButton:Disable()
         end
         return
     end
@@ -288,6 +418,24 @@ local function RefreshDetailActionButtons()
             removeButton:Disable()
         end
         removeButton:SetText("Remove")
+    end
+
+    local canSearch = IsAuxSearchReady()
+    if searchItemButton then
+        if canSearch and GetRecipeSearchName(ProfitCraft_SelectedRecipe) then
+            searchItemButton:Enable()
+        else
+            searchItemButton:Disable()
+        end
+    end
+
+    if searchMatsButton then
+        local hasReagents = ProfitCraft_SelectedRecipe.reagents and table.getn(ProfitCraft_SelectedRecipe.reagents) > 0
+        if canSearch and hasReagents then
+            searchMatsButton:Enable()
+        else
+            searchMatsButton:Disable()
+        end
     end
 end
 
@@ -541,7 +689,7 @@ function ProfitCraft_Dashboard_OnLoad(frame)
 
         local textFs = row:CreateFontString("ProfitCraftTrackerRow"..i.."Text", "ARTWORK", "GameFontHighlightSmall")
         textFs:SetJustifyH("LEFT")
-        textFs:SetWidth(430)
+        textFs:SetWidth(400)
         textFs:SetPoint("LEFT", row, "LEFT", 2, 0)
 
         local minusBtn = CreateFrame("Button", "ProfitCraftTrackerRow"..i.."Minus", row)
@@ -578,6 +726,17 @@ function ProfitCraft_Dashboard_OnLoad(frame)
         removeBtn:SetScript("OnClick", function()
             ProfitCraft_RemoveFromShoppingList(this.recipeIndex)
         end)
+
+        local searchBtn = CreateFrame("Button", "ProfitCraftTrackerRow"..i.."Search", row, "UIPanelButtonTemplate")
+        searchBtn:SetWidth(26)
+        searchBtn:SetHeight(16)
+        searchBtn:SetPoint("RIGHT", row, "RIGHT", -2, 0)
+        searchBtn:SetText("AH")
+        searchBtn.searchName = nil
+        searchBtn:SetScript("OnClick", function()
+            ProfitCraft_SearchInAuxByName(this.searchName)
+        end)
+        searchBtn:Hide()
 
         row:Hide()
     end
@@ -908,6 +1067,56 @@ function ProfitCraft_RemoveSelectedRecipeFromShoppingList()
     ProfitCraft_DashboardUpdate()
 end
 
+function ProfitCraft_SearchInAuxByName(itemName)
+    local query = TrimSearchText(itemName)
+    if not query then
+        return
+    end
+
+    if not IsAuxSearchReady() then
+        PrintDashboardMessage("Open Auction House with Aux to run search actions.")
+        RefreshDetailActionButtons()
+        return
+    end
+
+    local ok = ProfitCraft_TryAuxSearchByName(query)
+    if ok then
+        PrintDashboardMessage("Searching: " .. query)
+    else
+        PrintDashboardMessage("Unable to send search request to Aux for: " .. query)
+    end
+end
+
+function ProfitCraft_SearchSelectedRecipeInAux()
+    if not ProfitCraft_SelectedRecipe then
+        return
+    end
+
+    local searchName = GetRecipeSearchName(ProfitCraft_SelectedRecipe)
+    ProfitCraft_SearchInAuxByName(searchName)
+end
+
+function ProfitCraft_SearchSelectedReagentsInAux()
+    if not ProfitCraft_SelectedRecipe or not ProfitCraft_SelectedRecipe.reagents then
+        return
+    end
+
+    local firstSearchName = nil
+    for _, reagent in ipairs(ProfitCraft_SelectedRecipe.reagents) do
+        if reagent and reagent.name and reagent.name ~= "" then
+            firstSearchName = reagent.name
+            break
+        end
+    end
+
+    if not firstSearchName then
+        PrintDashboardMessage("No reagent names available for Aux search.")
+        return
+    end
+
+    ProfitCraft_SearchInAuxByName(firstSearchName)
+end
+
 function ProfitCraft_RemoveFromShoppingList(index)
     if ProfitCraft_ShoppingList[index] then
         table.remove(ProfitCraft_ShoppingList, index)
@@ -1019,6 +1228,7 @@ function ProfitCraft_UpdateTracker()
         table.insert(rows, {
             type = "recipe",
             text = "|cFFFFD100" .. (selected.name or "Unknown Recipe") .. "|r" .. professionSuffix,
+            searchName = GetRecipeSearchName(selected),
         })
         table.insert(rows, {
             type = "meta",
@@ -1082,6 +1292,7 @@ function ProfitCraft_UpdateTracker()
                 table.insert(rows, {
                     type = "reagent",
                     text = "  " .. color .. have .. "/" .. need .. "|r  " .. (reagent.name or "Unknown"),
+                    searchName = reagent.name,
                 })
             end
         end
@@ -1104,8 +1315,9 @@ function ProfitCraft_UpdateTracker()
         local minusBtn = getglobal("ProfitCraftTrackerRow"..i.."Minus")
         local plusBtn = getglobal("ProfitCraftTrackerRow"..i.."Plus")
         local removeBtn = getglobal("ProfitCraftTrackerRow"..i.."Remove")
+        local searchBtn = getglobal("ProfitCraftTrackerRow"..i.."Search")
 
-        if row and textFs and minusBtn and plusBtn and removeBtn then
+        if row and textFs and minusBtn and plusBtn and removeBtn and searchBtn then
             local rowData = rows[offset + i]
             if rowData then
                 textFs:SetText(rowData.text or "")
@@ -1113,8 +1325,22 @@ function ProfitCraft_UpdateTracker()
                 plusBtn:Hide()
                 removeBtn:Hide()
 
+                local canSearch = IsAuxSearchReady()
+                if rowData.searchName and rowData.searchName ~= "" then
+                    searchBtn.searchName = rowData.searchName
+                    if canSearch then
+                        searchBtn:Enable()
+                    else
+                        searchBtn:Disable()
+                    end
+                    searchBtn:Show()
+                else
+                    searchBtn:Hide()
+                end
+
                 row:Show()
             else
+                searchBtn:Hide()
                 row:Hide()
             end
         end
