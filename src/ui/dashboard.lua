@@ -523,16 +523,26 @@ function ProfitCraft_FormatCurrency(copper)
     local s = math.floor(math.mod(copper / 100, 100))
     local c = math.mod(copper, 100)
 
-    local str = ""
-    if g > 0 then str = str .. g .. "g " end
-    if s > 0 or g > 0 then str = str .. s .. "s " end
-    str = str .. c .. "c"
-
+    local numberColor = "|cFF00FF00"
     if isNegative then
-        return "|cFFFF4444-" .. str .. "|r"
-    else
-        return "|cFF00FF00" .. str .. "|r"
+        numberColor = "|cFFFF4444"
     end
+
+    local parts = {}
+    if g > 0 then
+        table.insert(parts, numberColor .. g .. "|r|cFFFFD100g|r")
+    end
+    if s > 0 or g > 0 then
+        table.insert(parts, numberColor .. s .. "|r|cFFC7C7CFs|r")
+    end
+    table.insert(parts, numberColor .. c .. "|r|cFFB87333c|r")
+
+    local signPrefix = ""
+    if isNegative then
+        signPrefix = numberColor .. "-|r"
+    end
+
+    return signPrefix .. table.concat(parts, " ")
 end
 
 function ProfitCraft_FormatCurrencyNeutral(copper)
@@ -542,12 +552,17 @@ function ProfitCraft_FormatCurrencyNeutral(copper)
     local s = math.floor(math.mod(copper / 100, 100))
     local c = math.mod(copper, 100)
 
-    local str = ""
-    if g > 0 then str = str .. g .. "g " end
-    if s > 0 or g > 0 then str = str .. s .. "s " end
-    str = str .. c .. "c"
+    local numberColor = "|cFFDDDDDD"
+    local parts = {}
+    if g > 0 then
+        table.insert(parts, numberColor .. g .. "|r|cFFFFD100g|r")
+    end
+    if s > 0 or g > 0 then
+        table.insert(parts, numberColor .. s .. "|r|cFFC7C7CFs|r")
+    end
+    table.insert(parts, numberColor .. c .. "|r|cFFB87333c|r")
 
-    return "|cFFDDDDDD" .. str .. "|r"
+    return table.concat(parts, " ")
 end
 
 -- ============================================================================
@@ -694,6 +709,12 @@ function ProfitCraft_Dashboard_OnLoad(frame)
         textFs:SetJustifyH("LEFT")
         textFs:SetWidth(524)
         textFs:SetPoint("LEFT", row, "LEFT", 2, 0)
+
+        local valueFs = row:CreateFontString("ProfitCraftTrackerRow"..i.."Value", "ARTWORK", "GameFontHighlightSmall")
+        valueFs:SetJustifyH("RIGHT")
+        valueFs:SetWidth(190)
+        valueFs:SetPoint("RIGHT", row, "RIGHT", -2, 0)
+        valueFs:SetText("")
 
         local minusBtn = CreateFrame("Button", "ProfitCraftTrackerRow"..i.."Minus", row)
         minusBtn:SetWidth(16)
@@ -1257,8 +1278,8 @@ function ProfitCraft_UpdateTracker()
 
                         table.insert(rows, {
                             type = "reagent",
-                            text = "  " .. color .. have .. "/" .. need .. "|r  " .. (reagent.name or "Unknown")
-                                .. "  " .. ProfitCraft_FormatCurrencyNeutral(unitCost)
+                            text = "  " .. color .. have .. "/" .. need .. "|r  " .. (reagent.name or "Unknown"),
+                            rightText = ProfitCraft_FormatCurrencyNeutral(unitCost)
                                 .. " x" .. need .. " = " .. ProfitCraft_FormatCurrencyNeutral(lineSubtotal),
                             searchName = reagent.name,
                         })
@@ -1358,8 +1379,8 @@ function ProfitCraft_UpdateTracker()
 
                     table.insert(rows, {
                         type = "reagent",
-                        text = "  " .. color .. have .. "/" .. need .. "|r  " .. (reagent.name or "Unknown")
-                            .. "  " .. ProfitCraft_FormatCurrencyNeutral(unitCost)
+                        text = "  " .. color .. have .. "/" .. need .. "|r  " .. (reagent.name or "Unknown"),
+                        rightText = ProfitCraft_FormatCurrencyNeutral(unitCost)
                             .. " x" .. need .. " = " .. ProfitCraft_FormatCurrencyNeutral(lineSubtotal),
                         searchName = reagent.name,
                     })
@@ -1382,15 +1403,17 @@ function ProfitCraft_UpdateTracker()
     for i = 1, TRACKER_DISPLAY_ROWS do
         local row = getglobal("ProfitCraftTrackerRow"..i)
         local textFs = getglobal("ProfitCraftTrackerRow"..i.."Text")
+        local valueFs = getglobal("ProfitCraftTrackerRow"..i.."Value")
         local minusBtn = getglobal("ProfitCraftTrackerRow"..i.."Minus")
         local plusBtn = getglobal("ProfitCraftTrackerRow"..i.."Plus")
         local removeBtn = getglobal("ProfitCraftTrackerRow"..i.."Remove")
         local searchBtn = getglobal("ProfitCraftTrackerRow"..i.."Search")
 
-        if row and textFs and minusBtn and plusBtn and removeBtn and searchBtn then
+        if row and textFs and valueFs and minusBtn and plusBtn and removeBtn and searchBtn then
             local rowData = rows[offset + i]
             if rowData then
                 textFs:SetText(rowData.text or "")
+                valueFs:SetText(rowData.rightText or "")
                 local showLineControls = isShoppingView and rowData.type == "recipe" and rowData.recipeIndex
                 if showLineControls then
                     minusBtn.recipeIndex = rowData.recipeIndex
@@ -1409,11 +1432,6 @@ function ProfitCraft_UpdateTracker()
                 if rowData.searchName and rowData.searchName ~= "" then
                     textFs:ClearAllPoints()
                     textFs:SetPoint("LEFT", row, "LEFT", 32, 0)
-                    if showLineControls then
-                        textFs:SetWidth(430)
-                    else
-                        textFs:SetWidth(494)
-                    end
                     searchBtn.searchName = rowData.searchName
                     if canSearch then
                         searchBtn:Enable()
@@ -1424,8 +1442,39 @@ function ProfitCraft_UpdateTracker()
                 else
                     textFs:ClearAllPoints()
                     textFs:SetPoint("LEFT", row, "LEFT", 2, 0)
-                    textFs:SetWidth(524)
                     searchBtn:Hide()
+                end
+
+                local hasRightColumn = rowData.rightText and rowData.rightText ~= ""
+                local leftStartX = 2
+                if rowData.searchName and rowData.searchName ~= "" then
+                    leftStartX = 32
+                end
+
+                if hasRightColumn then
+                    local valueRightOffset = -2
+                    local rightLimitX = 530
+                    if showLineControls then
+                        valueRightOffset = -72
+                        rightLimitX = 460
+                    end
+
+                    valueFs:ClearAllPoints()
+                    valueFs:SetPoint("RIGHT", row, "RIGHT", valueRightOffset, 0)
+                    valueFs:Show()
+
+                    local leftWidth = rightLimitX - leftStartX - 196
+                    if leftWidth < 80 then leftWidth = 80 end
+                    textFs:SetWidth(leftWidth)
+                else
+                    valueFs:SetText("")
+                    valueFs:Hide()
+
+                    local rightLimitX = 530
+                    if showLineControls then
+                        rightLimitX = 460
+                    end
+                    textFs:SetWidth(rightLimitX - leftStartX)
                 end
 
                 row:Show()
@@ -1434,6 +1483,8 @@ function ProfitCraft_UpdateTracker()
                 plusBtn:Hide()
                 removeBtn:Hide()
                 searchBtn:Hide()
+                valueFs:SetText("")
+                valueFs:Hide()
                 row:Hide()
             end
         end
