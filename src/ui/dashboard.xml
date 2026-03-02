@@ -321,6 +321,15 @@
                     </Anchor>
                 </Anchors>
                 <Frames>
+                    <Frame name="ProfitCraftProfessionDropdown" inherits="UIDropDownMenuTemplate">
+                        <Anchors>
+                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
+                                <Offset>
+                                    <AbsDimension x="-14" y="2"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                    </Frame>
                     <!-- Learned checkbox at x=0 -->
                     <CheckButton name="ProfitCraftFilterLearned" inherits="UICheckButtonTemplate">
                         <Size>
@@ -329,7 +338,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
                                 <Offset>
-                                    <AbsDimension x="0" y="-1"/>
+                                    <AbsDimension x="128" y="-1"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -347,7 +356,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
                                 <Offset>
-                                    <AbsDimension x="130" y="-1"/>
+                                    <AbsDimension x="216" y="-1"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -365,7 +374,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
                                 <Offset>
-                                    <AbsDimension x="280" y="-1"/>
+                                    <AbsDimension x="318" y="-1"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -383,7 +392,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
                                 <Offset>
-                                    <AbsDimension x="380" y="-1"/>
+                                    <AbsDimension x="396" y="-1"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>

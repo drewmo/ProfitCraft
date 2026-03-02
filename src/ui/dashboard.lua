@@ -19,6 +19,7 @@ ProfitCraft_Filters = {
     showVendor = true,
     showDrop = true,
     showShoppingOnly = false,
+    selectedProfession = "All",
 }
 
 -- Multi-item shopping list: { {recipe=<data>, qty=1}, ... }
@@ -34,6 +35,9 @@ local TRACKER_TABLE_COL_HAVE_WIDTH = 52
 local TRACKER_TABLE_COL_QTY_WIDTH = 76
 local TRACKER_TABLE_COL_UNIT_WIDTH = 120
 local TRACKER_TABLE_COL_SUBTOTAL_WIDTH = 120
+local PROFESSION_FILTER_ALL = "All"
+local pendingProfessionFilterDefault = nil
+local professionFilterOptions = { PROFESSION_FILTER_ALL }
 
 local PROFESSION_SHORT_NAMES = {
     ["Alchemy"] = "Alch",
@@ -322,6 +326,150 @@ local function GetRecipeDisplayName(recipeName, profession, dimName)
     end
 
     return safeName .. " |cFF777777[" .. shortProfession .. "]|r"
+end
+
+local function NormalizeProfessionFilterValue(value)
+    if not value or value == "" then
+        return PROFESSION_FILTER_ALL
+    end
+    return value
+end
+
+local function IsProfessionOptionAvailable(options, professionName)
+    if not options then return false end
+    for _, option in ipairs(options) do
+        if option == professionName then
+            return true
+        end
+    end
+    return false
+end
+
+local function GetCurrentTradeSkillProfessionName()
+    if not GetTradeSkillLine or not GetNumTradeSkills then
+        return nil
+    end
+
+    local numSkills = GetNumTradeSkills() or 0
+    if numSkills <= 0 then
+        return nil
+    end
+
+    local skillName = GetTradeSkillLine()
+    if skillName and skillName ~= "" and skillName ~= "UNKNOWN" then
+        return skillName
+    end
+
+    return nil
+end
+
+local function BuildProfessionFilterOptions()
+    local found = {}
+    local options = { PROFESSION_FILTER_ALL }
+
+    for _, entry in ipairs(ProfitCraft_List) do
+        if entry.profession and entry.profession ~= "" then
+            found[entry.profession] = true
+        end
+    end
+
+    if ProfitCraft_GetStoredProfessions then
+        local stored = ProfitCraft_GetStoredProfessions()
+        if stored then
+            for professionName, professionData in pairs(stored) do
+                if professionName and professionName ~= "" then
+                    local rank = professionData and professionData.rank or 0
+                    if rank > 0 then
+                        found[professionName] = true
+                    end
+                end
+            end
+        end
+    end
+
+    local activeProfession = GetCurrentTradeSkillProfessionName()
+    if activeProfession then
+        found[activeProfession] = true
+    end
+
+    local ordered = {}
+    for professionName in pairs(found) do
+        table.insert(ordered, professionName)
+    end
+    table.sort(ordered)
+
+    for _, professionName in ipairs(ordered) do
+        table.insert(options, professionName)
+    end
+
+    return options
+end
+
+local function RefreshProfessionFilterDropdown()
+    professionFilterOptions = BuildProfessionFilterOptions()
+
+    local selectedProfession = NormalizeProfessionFilterValue(ProfitCraft_Filters.selectedProfession)
+    if pendingProfessionFilterDefault ~= nil then
+        selectedProfession = NormalizeProfessionFilterValue(pendingProfessionFilterDefault)
+        pendingProfessionFilterDefault = nil
+    end
+
+    if not IsProfessionOptionAvailable(professionFilterOptions, selectedProfession) then
+        selectedProfession = PROFESSION_FILTER_ALL
+    end
+    ProfitCraft_Filters.selectedProfession = selectedProfession
+
+    local dropdown = ProfitCraftProfessionDropdown
+    if not dropdown then
+        return
+    end
+
+    if UIDropDownMenu_SetWidth then
+        UIDropDownMenu_SetWidth(dropdown, 124)
+    end
+    if UIDropDownMenu_SetButtonWidth then
+        UIDropDownMenu_SetButtonWidth(dropdown, 140)
+    end
+    if UIDropDownMenu_JustifyText then
+        UIDropDownMenu_JustifyText(dropdown, "LEFT")
+    end
+
+    if UIDropDownMenu_Initialize and UIDropDownMenu_CreateInfo and UIDropDownMenu_AddButton then
+        UIDropDownMenu_Initialize(dropdown, function()
+            for _, optionName in ipairs(professionFilterOptions) do
+                local info = UIDropDownMenu_CreateInfo()
+                local selectedOption = optionName
+                info.text = selectedOption
+                info.checked = selectedOption == ProfitCraft_Filters.selectedProfession
+                info.func = function()
+                    ProfitCraft_SetProfessionFilter(selectedOption)
+                end
+                UIDropDownMenu_AddButton(info)
+            end
+        end)
+    end
+
+    if UIDropDownMenu_SetText then
+        UIDropDownMenu_SetText(selectedProfession, dropdown)
+    end
+end
+
+function ProfitCraft_RequestProfessionFilterDefault(professionName)
+    pendingProfessionFilterDefault = NormalizeProfessionFilterValue(professionName)
+end
+
+function ProfitCraft_SetProfessionFilter(professionName)
+    local selected = NormalizeProfessionFilterValue(professionName)
+    if not IsProfessionOptionAvailable(professionFilterOptions, selected) then
+        selected = PROFESSION_FILTER_ALL
+    end
+
+    pendingProfessionFilterDefault = nil
+    ProfitCraft_Filters.selectedProfession = selected
+    RefreshProfessionFilterDropdown()
+    ProfitCraft_ApplySortAndFilter()
+    ProfitCraft_DashboardUpdate()
+    ProfitCraft_UpdateTracker()
 end
 
 local function PersistShoppingList()
@@ -693,6 +841,7 @@ function ProfitCraft_Dashboard_OnLoad(frame)
     ProfitCraft_Filters.showVendor = GetSettingValue("showVendor", true)
     ProfitCraft_Filters.showDrop = GetSettingValue("showDrop", true)
     ProfitCraft_Filters.showShoppingOnly = GetSettingValue("showShoppingOnly", false)
+    ProfitCraft_Filters.selectedProfession = NormalizeProfessionFilterValue(ProfitCraft_Filters.selectedProfession)
 
     -- Initialize filter checkboxes
     if ProfitCraftFilterLearned then
@@ -714,6 +863,7 @@ function ProfitCraft_Dashboard_OnLoad(frame)
     EnsureSettingsPanelOnTop()
     ConfigureStaticCheckboxLabels()
     ProfitCraft_RefreshSettingsUI()
+    RefreshProfessionFilterDropdown()
 
     -- Legacy top controls are replaced by the explicit detail-pane add button.
     if ProfitCraftTrackerMinus then ProfitCraftTrackerMinus:Hide() end
@@ -926,6 +1076,7 @@ function ProfitCraft_SetShoppingOnlyFilter(enabled)
 end
 
 function ProfitCraft_ApplySortAndFilter()
+    RefreshProfessionFilterDropdown()
     ProfitCraft_FilteredList = {}
 
     local shoppingOnlyMap = nil
@@ -938,6 +1089,8 @@ function ProfitCraft_ApplySortAndFilter()
             end
         end
     end
+
+    local selectedProfession = NormalizeProfessionFilterValue(ProfitCraft_Filters.selectedProfession)
 
     for _, entry in ipairs(ProfitCraft_List) do
         local dominated = true
@@ -964,6 +1117,12 @@ function ProfitCraft_ApplySortAndFilter()
         if dominated and shoppingOnlyMap then
             local entryKey = BuildRecipeLookupKey(entry)
             if not entryKey or not shoppingOnlyMap[entryKey] then
+                dominated = false
+            end
+        end
+
+        if dominated and selectedProfession ~= PROFESSION_FILTER_ALL then
+            if not entry.profession or entry.profession ~= selectedProfession then
                 dominated = false
             end
         end
@@ -1713,6 +1872,7 @@ function ProfitCraft_ToggleDashboard()
             ProfitCraftSettingsPanel:Hide()
         end
     else
+        ProfitCraft_RequestProfessionFilterDefault(GetCurrentTradeSkillProfessionName())
         ProfitCraftDashboard:Show()
         if ProfitCraft_CalculateProfits then
             ProfitCraft_CalculateProfits(true)

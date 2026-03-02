@@ -864,6 +864,13 @@ frame:SetScript("OnEvent", function()
     elseif event == "TRADE_SKILL_SHOW" then
         -- Re-check Aux on first use (it may load after us)
         if not hasAux then InitAuxAPI() end
+        if ProfitCraft_RequestProfessionFilterDefault and GetTradeSkillLine then
+            local activeProfession = GetTradeSkillLine()
+            if activeProfession == "UNKNOWN" then
+                activeProfession = nil
+            end
+            ProfitCraft_RequestProfessionFilterDefault(activeProfession)
+        end
         ProfitCraft_CalculateProfits(false, true)
 
     elseif event == "SKILL_LINES_CHANGED" then
