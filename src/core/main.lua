@@ -12,6 +12,8 @@ local function Print(msg)
 end
 
 local SETTINGS_DEFAULTS = {
+    showLearned = true,
+    showUnlearned = true,
     showQuest = true,
     showTrainer = true,
     showVendor = true,
@@ -150,6 +152,7 @@ local function CloneRecipeSnapshot(recipe)
         marketValue = recipe.marketValue or 0,
         cost = recipe.cost or 0,
         profit = recipe.profit or 0,
+        level = recipe.level or 0,
         isLearned = recipe.isLearned and true or false,
         source = recipe.source,
         sourceDetails = recipe.sourceDetails,
@@ -579,6 +582,84 @@ local function IsRecipeKnown(profession, recipeName, liveLearnedLookup)
     return false
 end
 
+local function GetRequiredSkillFromCharacterCaches(professionName, recipeName)
+    local recipeKey = NormalizeRecipeName(recipeName)
+    if not recipeKey then
+        return nil
+    end
+
+    local data = EnsureCharacterData()
+    local trainerByProfession = data.trainerRecipes and data.trainerRecipes[professionName]
+    if trainerByProfession and trainerByProfession[recipeKey] then
+        local reqSkill = trainerByProfession[recipeKey].reqSkill
+        if reqSkill and reqSkill > 0 then
+            return reqSkill
+        end
+    end
+
+    local discoveredByProfession = data.discoveredRecipes and data.discoveredRecipes[professionName]
+    if discoveredByProfession and discoveredByProfession[recipeKey] then
+        local reqSkill = discoveredByProfession[recipeKey].reqSkill
+        if reqSkill and reqSkill > 0 then
+            return reqSkill
+        end
+    end
+
+    return nil
+end
+
+local function GetRequiredSkillFromRecipeDB(professionName, recipeName)
+    if not ProfitCraft_RecipeDB or not professionName or not recipeName then
+        return nil
+    end
+
+    local byProfession = ProfitCraft_RecipeDB[professionName]
+    if not byProfession then
+        return nil
+    end
+
+    local recipeKey = NormalizeRecipeName(recipeName)
+    if not recipeKey then
+        return nil
+    end
+
+    for reqSkill, recipes in pairs(byProfession) do
+        for _, recipe in ipairs(recipes) do
+            if recipe and recipe.name and NormalizeRecipeName(recipe.name) == recipeKey then
+                local explicitReq = tonumber(recipe.reqSkill)
+                if explicitReq and explicitReq > 0 then
+                    return explicitReq
+                end
+
+                local thresholdReq = tonumber(reqSkill)
+                if thresholdReq and thresholdReq > 0 then
+                    return thresholdReq
+                end
+            end
+        end
+    end
+
+    return nil
+end
+
+function ProfitCraft_GetRecipeRequiredSkill(professionName, recipeName)
+    if not professionName or not recipeName then
+        return nil
+    end
+
+    local cachedReq = GetRequiredSkillFromCharacterCaches(professionName, recipeName)
+    if cachedReq and cachedReq > 0 then
+        return cachedReq
+    end
+
+    local dbReq = GetRequiredSkillFromRecipeDB(professionName, recipeName)
+    if dbReq and dbReq > 0 then
+        return dbReq
+    end
+
+    return nil
+end
+
 local function StoreLearnedRecipeCacheForProfession(professionName, learnedRecipes)
     if not IsTrackedProfession(professionName) then return end
 
@@ -658,6 +739,7 @@ local function GetCachedLearnedRecipesForProfession(professionName)
                 marketValue = itemValue,
                 cost = totalReagentCost,
                 profit = itemValue - totalReagentCost,
+                level = recipe.level or ProfitCraft_GetRecipeRequiredSkill(professionName, recipe.name) or 0,
                 isLearned = true,
                 source = "Learned",
                 sourceDetails = nil,
@@ -1024,6 +1106,7 @@ local function AppendUnlearnedRecipesForProfession(professionName, professionRan
                     marketValue = itemValue,
                     cost = 0,
                     profit = itemValue,
+                    level = recipe.reqSkill or ProfitCraft_GetRecipeRequiredSkill(professionName, recipe.name) or 0,
                     isLearned = false,
                     source = recipe.source or "Unknown",
                     sourceDetails = recipe.details or nil,
@@ -1123,6 +1206,7 @@ function ProfitCraft_CalculateProfits(silent, shouldShowDashboard)
                     marketValue = itemValue,
                     cost = totalReagentCost,
                     profit = profit,
+                    level = ProfitCraft_GetRecipeRequiredSkill(skillName, name) or 0,
                     isLearned = true,
                     source = "Learned",
                     sourceDetails = nil,

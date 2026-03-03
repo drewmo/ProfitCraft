@@ -20,6 +20,7 @@ ProfitCraft_Filters = {
     showDrop = true,
     showShoppingOnly = false,
     selectedProfession = "All",
+    selectedLevelRange = "ALL",
 }
 
 -- Multi-item shopping list: { {recipe=<data>, qty=1}, ... }
@@ -38,6 +39,13 @@ local TRACKER_TABLE_COL_SUBTOTAL_WIDTH = 120
 local PROFESSION_FILTER_ALL = "All"
 local pendingProfessionFilterDefault = nil
 local professionFilterOptions = { PROFESSION_FILTER_ALL }
+local LEVEL_RANGE_FILTERS = {
+    { id = "ALL", label = "Any Level" },
+    { id = "1_75", label = "1-75", min = 1, max = 75 },
+    { id = "76_150", label = "76-150", min = 76, max = 150 },
+    { id = "151_225", label = "151-225", min = 151, max = 225 },
+    { id = "226_300", label = "226-300", min = 226, max = 300 },
+}
 
 local PROFESSION_SHORT_NAMES = {
     ["Alchemy"] = "Alch",
@@ -472,6 +480,68 @@ function ProfitCraft_SetProfessionFilter(professionName)
     ProfitCraft_UpdateTracker()
 end
 
+local function GetLevelRangeFilterByID(filterID)
+    if not filterID or filterID == "" then
+        filterID = "ALL"
+    end
+
+    for _, filterData in ipairs(LEVEL_RANGE_FILTERS) do
+        if filterData.id == filterID then
+            return filterData
+        end
+    end
+
+    return LEVEL_RANGE_FILTERS[1]
+end
+
+local function RefreshLevelRangeDropdown()
+    local selectedID = ProfitCraft_Filters.selectedLevelRange
+    local selectedFilter = GetLevelRangeFilterByID(selectedID)
+    ProfitCraft_Filters.selectedLevelRange = selectedFilter.id
+
+    local dropdown = ProfitCraftLevelRangeDropdown
+    if not dropdown then
+        return
+    end
+
+    if UIDropDownMenu_SetWidth then
+        UIDropDownMenu_SetWidth(112, dropdown)
+    end
+    if UIDropDownMenu_SetButtonWidth then
+        UIDropDownMenu_SetButtonWidth(128, dropdown)
+    end
+    if UIDropDownMenu_JustifyText then
+        UIDropDownMenu_JustifyText("LEFT", dropdown)
+    end
+
+    if UIDropDownMenu_Initialize and UIDropDownMenu_CreateInfo and UIDropDownMenu_AddButton then
+        UIDropDownMenu_Initialize(dropdown, function()
+            for _, filterData in ipairs(LEVEL_RANGE_FILTERS) do
+                local info = UIDropDownMenu_CreateInfo()
+                info.text = filterData.label
+                info.checked = filterData.id == ProfitCraft_Filters.selectedLevelRange
+                info.func = function()
+                    ProfitCraft_SetLevelRangeFilter(filterData.id)
+                end
+                UIDropDownMenu_AddButton(info)
+            end
+        end)
+    end
+
+    if UIDropDownMenu_SetText then
+        UIDropDownMenu_SetText(selectedFilter.label, dropdown)
+    end
+end
+
+function ProfitCraft_SetLevelRangeFilter(filterID)
+    local selected = GetLevelRangeFilterByID(filterID)
+    ProfitCraft_Filters.selectedLevelRange = selected.id
+    RefreshLevelRangeDropdown()
+    ProfitCraft_ApplySortAndFilter()
+    ProfitCraft_DashboardUpdate()
+    ProfitCraft_UpdateTracker()
+end
+
 local function PersistShoppingList()
     if ProfitCraft_SaveShoppingList then
         ProfitCraft_SaveShoppingList(ProfitCraft_ShoppingList)
@@ -606,15 +676,13 @@ local function SetCheckboxLabel(frameName, labelText, width)
 end
 
 local function ConfigureStaticCheckboxLabels()
-    SetCheckboxLabel("ProfitCraftFilterLearned", "Learned", 70)
-    SetCheckboxLabel("ProfitCraftFilterUnlearned", "Unlearned", 85)
-    SetCheckboxLabel("ProfitCraftFilterQuest", "Quest", 55)
-    SetCheckboxLabel("ProfitCraftFilterShoppingOnly", "Shopping Only", 105)
-
+    SetCheckboxLabel("ProfitCraftSettingShowLearned", "Show Learned", 200)
+    SetCheckboxLabel("ProfitCraftSettingShowUnlearned", "Show Unlearned", 200)
     SetCheckboxLabel("ProfitCraftSettingShowQuest", "Show Quest Unlearned", 200)
     SetCheckboxLabel("ProfitCraftSettingShowTrainer", "Show Trainer Unlearned", 200)
     SetCheckboxLabel("ProfitCraftSettingShowVendor", "Show Vendor Unlearned", 200)
     SetCheckboxLabel("ProfitCraftSettingShowDrop", "Show Drop Unlearned", 200)
+    SetCheckboxLabel("ProfitCraftSettingShowShoppingOnly", "Shopping List View", 200)
     SetCheckboxLabel("ProfitCraftSettingAutoMerchant", "Open at Vendors", 200)
     SetCheckboxLabel("ProfitCraftSettingAutoAuction", "Open at Auction House", 200)
     SetCheckboxLabel("ProfitCraftSettingAutoShoppingOnly", "Use Shopping-Only on Auto Open", 210)
@@ -638,10 +706,13 @@ local function EnsureSettingsPanelOnTop()
     end
 
     local checkboxes = {
+        "ProfitCraftSettingShowLearned",
+        "ProfitCraftSettingShowUnlearned",
         "ProfitCraftSettingShowQuest",
         "ProfitCraftSettingShowTrainer",
         "ProfitCraftSettingShowVendor",
         "ProfitCraftSettingShowDrop",
+        "ProfitCraftSettingShowShoppingOnly",
         "ProfitCraftSettingAutoMerchant",
         "ProfitCraftSettingAutoAuction",
         "ProfitCraftSettingAutoShoppingOnly",
@@ -716,21 +787,15 @@ end
 -- Settings
 -- ============================================================================
 
-local function SyncTopFilterCheckboxes()
-    if ProfitCraftFilterQuest then
-        ProfitCraftFilterQuest:SetChecked(ProfitCraft_Filters.showQuest)
-    end
-    if ProfitCraftFilterShoppingOnly then
-        ProfitCraftFilterShoppingOnly:SetChecked(ProfitCraft_Filters.showShoppingOnly)
-    end
-end
-
 function ProfitCraft_RefreshSettingsUI()
     local settingsMap = {
+        ProfitCraftSettingShowLearned = { key = "showLearned", fallback = true },
+        ProfitCraftSettingShowUnlearned = { key = "showUnlearned", fallback = true },
         ProfitCraftSettingShowQuest = { key = "showQuest", fallback = true },
         ProfitCraftSettingShowTrainer = { key = "showTrainer", fallback = true },
         ProfitCraftSettingShowVendor = { key = "showVendor", fallback = true },
         ProfitCraftSettingShowDrop = { key = "showDrop", fallback = true },
+        ProfitCraftSettingShowShoppingOnly = { key = "showShoppingOnly", fallback = false },
         ProfitCraftSettingAutoMerchant = { key = "autoOpenMerchant", fallback = true },
         ProfitCraftSettingAutoAuction = { key = "autoOpenAuction", fallback = true },
         ProfitCraftSettingAutoShoppingOnly = { key = "autoOpenShoppingOnly", fallback = true },
@@ -762,7 +827,11 @@ function ProfitCraft_OnSettingToggle(key)
     local checked = this:GetChecked() and true or false
     SetSettingValue(key, checked)
 
-    if key == "showQuest" then
+    if key == "showLearned" then
+        ProfitCraft_Filters.showLearned = checked
+    elseif key == "showUnlearned" then
+        ProfitCraft_Filters.showUnlearned = checked
+    elseif key == "showQuest" then
         ProfitCraft_Filters.showQuest = checked
     elseif key == "showTrainer" then
         ProfitCraft_Filters.showTrainer = checked
@@ -770,11 +839,15 @@ function ProfitCraft_OnSettingToggle(key)
         ProfitCraft_Filters.showVendor = checked
     elseif key == "showDrop" then
         ProfitCraft_Filters.showDrop = checked
+    elseif key == "showShoppingOnly" then
+        ProfitCraft_Filters.showShoppingOnly = checked
     end
 
-    SyncTopFilterCheckboxes()
+    ProfitCraft_RefreshSettingsUI()
     ProfitCraft_ApplySortAndFilter()
+    ApplyDashboardModeLayout()
     ProfitCraft_DashboardUpdate()
+    ProfitCraft_UpdateTracker()
 end
 
 local function ApplyDashboardModeLayout()
@@ -834,28 +907,15 @@ function ProfitCraft_Dashboard_OnLoad(frame)
     end
 
     -- Initialize filter state
-    ProfitCraft_Filters.showLearned = true
-    ProfitCraft_Filters.showUnlearned = true
+    ProfitCraft_Filters.showLearned = GetSettingValue("showLearned", true)
+    ProfitCraft_Filters.showUnlearned = GetSettingValue("showUnlearned", true)
     ProfitCraft_Filters.showQuest = GetSettingValue("showQuest", true)
     ProfitCraft_Filters.showTrainer = GetSettingValue("showTrainer", true)
     ProfitCraft_Filters.showVendor = GetSettingValue("showVendor", true)
     ProfitCraft_Filters.showDrop = GetSettingValue("showDrop", true)
     ProfitCraft_Filters.showShoppingOnly = GetSettingValue("showShoppingOnly", false)
     ProfitCraft_Filters.selectedProfession = NormalizeProfessionFilterValue(ProfitCraft_Filters.selectedProfession)
-
-    -- Initialize filter checkboxes
-    if ProfitCraftFilterLearned then
-        ProfitCraftFilterLearned:SetChecked(ProfitCraft_Filters.showLearned)
-    end
-    if ProfitCraftFilterUnlearned then
-        ProfitCraftFilterUnlearned:SetChecked(ProfitCraft_Filters.showUnlearned)
-    end
-    if ProfitCraftFilterQuest then
-        ProfitCraftFilterQuest:SetChecked(ProfitCraft_Filters.showQuest)
-    end
-    if ProfitCraftFilterShoppingOnly then
-        ProfitCraftFilterShoppingOnly:SetChecked(ProfitCraft_Filters.showShoppingOnly)
-    end
+    ProfitCraft_Filters.selectedLevelRange = GetLevelRangeFilterByID(ProfitCraft_Filters.selectedLevelRange).id
 
     if ProfitCraftSettingsPanel then
         ProfitCraftSettingsPanel:Hide()
@@ -864,6 +924,7 @@ function ProfitCraft_Dashboard_OnLoad(frame)
     ConfigureStaticCheckboxLabels()
     ProfitCraft_RefreshSettingsUI()
     RefreshProfessionFilterDropdown()
+    RefreshLevelRangeDropdown()
 
     -- Legacy top controls are replaced by the explicit detail-pane add button.
     if ProfitCraftTrackerMinus then ProfitCraftTrackerMinus:Hide() end
@@ -1069,6 +1130,7 @@ function ProfitCraft_SetShoppingOnlyFilter(enabled)
         ProfitCraftFilterShoppingOnly:SetChecked(ProfitCraft_Filters.showShoppingOnly)
     end
 
+    ProfitCraft_RefreshSettingsUI()
     ProfitCraft_ApplySortAndFilter()
     ApplyDashboardModeLayout()
     ProfitCraft_DashboardUpdate()
@@ -1077,6 +1139,7 @@ end
 
 function ProfitCraft_ApplySortAndFilter()
     RefreshProfessionFilterDropdown()
+    RefreshLevelRangeDropdown()
     ProfitCraft_FilteredList = {}
 
     local shoppingOnlyMap = nil
@@ -1091,6 +1154,7 @@ function ProfitCraft_ApplySortAndFilter()
     end
 
     local selectedProfession = NormalizeProfessionFilterValue(ProfitCraft_Filters.selectedProfession)
+    local selectedLevelRange = GetLevelRangeFilterByID(ProfitCraft_Filters.selectedLevelRange)
 
     for _, entry in ipairs(ProfitCraft_List) do
         local dominated = true
@@ -1123,6 +1187,13 @@ function ProfitCraft_ApplySortAndFilter()
 
         if dominated and selectedProfession ~= PROFESSION_FILTER_ALL then
             if not entry.profession or entry.profession ~= selectedProfession then
+                dominated = false
+            end
+        end
+
+        if dominated and selectedLevelRange and selectedLevelRange.id ~= "ALL" then
+            local recipeLevel = tonumber(entry.level) or 0
+            if recipeLevel < (selectedLevelRange.min or 0) or recipeLevel > (selectedLevelRange.max or 9999) then
                 dominated = false
             end
         end
@@ -1179,6 +1250,15 @@ function ProfitCraft_DashboardUpdate()
                 nameText:SetText(GetRecipeDisplayName(data.name, data.profession, not data.isLearned))
 
                 -- Columns
+                local levelText = getglobal("ProfitCraftDashboardEntry"..i.."Level")
+                local recipeLevel = tonumber(data.level) or 0
+                if levelText then
+                    if recipeLevel > 0 then
+                        levelText:SetText("|cFFFFFFFF" .. recipeLevel .. "|r")
+                    else
+                        levelText:SetText("|cFF888888--|r")
+                    end
+                end
                 getglobal("ProfitCraftDashboardEntry"..i.."Cost"):SetText(ProfitCraft_FormatCurrencyNeutral(data.cost))
                 getglobal("ProfitCraftDashboardEntry"..i.."Value"):SetText(ProfitCraft_FormatCurrencyNeutral(data.marketValue))
                 getglobal("ProfitCraftDashboardEntry"..i.."Profit"):SetText(ProfitCraft_FormatCurrency(data.profit))
@@ -1233,6 +1313,12 @@ function ProfitCraft_OnEntryEnter(btn)
     GameTooltip:AddLine(" ")
     if data.profession then
         GameTooltip:AddDoubleLine("Profession:", data.profession, 0.7, 0.7, 0.7, 1, 1, 1)
+    end
+    local recipeLevel = tonumber(data.level) or 0
+    if recipeLevel > 0 then
+        GameTooltip:AddDoubleLine("Required Skill:", tostring(recipeLevel), 0.7, 0.7, 0.7, 1, 1, 1)
+    else
+        GameTooltip:AddDoubleLine("Required Skill:", "--", 0.7, 0.7, 0.7, 0.6, 0.6, 0.6)
     end
     GameTooltip:AddDoubleLine("Market Value:", ProfitCraft_FormatCurrencyNeutral(data.marketValue), 0.7, 0.7, 0.7)
     GameTooltip:AddDoubleLine("Craft Cost:", ProfitCraft_FormatCurrencyNeutral(data.cost), 0.7, 0.7, 0.7)
@@ -1842,8 +1928,8 @@ function ProfitCraft_HandleContextAutoOpen(context)
 
     if GetSettingValue("autoOpenShoppingOnly", true) then
         ProfitCraft_Filters.showShoppingOnly = true
-        if ProfitCraftFilterShoppingOnly then
-            ProfitCraftFilterShoppingOnly:SetChecked(true)
+        if ProfitCraftSettingShowShoppingOnly then
+            ProfitCraftSettingShowShoppingOnly:SetChecked(true)
         end
     end
 

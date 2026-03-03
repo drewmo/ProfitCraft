@@ -1,6 +1,6 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
 
-    <!-- Entry Template: 4-column row (Status, Name, Cost, Value, Profit) -->
+    <!-- Entry Template: 5-column row (Status, Name, Level, Cost, Value, Profit) -->
     <Button name="ProfitCraftEntryTemplate" virtual="true">
         <Size>
             <AbsDimension x="545" y="22"/>
@@ -21,7 +21,7 @@
                 </FontString>
                 <FontString name="$parentName" inherits="GameFontNormal" justifyH="LEFT" text="">
                     <Size>
-                        <AbsDimension x="220" y="22"/>
+                        <AbsDimension x="190" y="22"/>
                     </Size>
                     <Anchors>
                         <Anchor point="LEFT">
@@ -31,26 +31,38 @@
                         </Anchor>
                     </Anchors>
                 </FontString>
-                <FontString name="$parentCost" inherits="GameFontHighlightSmall" justifyH="RIGHT" text="">
+                <FontString name="$parentLevel" inherits="GameFontHighlightSmall" justifyH="RIGHT" text="">
                     <Size>
-                        <AbsDimension x="110" y="22"/>
+                        <AbsDimension x="50" y="22"/>
                     </Size>
                     <Anchors>
                         <Anchor point="LEFT">
                             <Offset>
-                                <AbsDimension x="238" y="0"/>
+                                <AbsDimension x="208" y="0"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </FontString>
+                <FontString name="$parentCost" inherits="GameFontHighlightSmall" justifyH="RIGHT" text="">
+                    <Size>
+                        <AbsDimension x="94" y="22"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="LEFT">
+                            <Offset>
+                                <AbsDimension x="260" y="0"/>
                             </Offset>
                         </Anchor>
                     </Anchors>
                 </FontString>
                 <FontString name="$parentValue" inherits="GameFontHighlightSmall" justifyH="RIGHT" text="">
                     <Size>
-                        <AbsDimension x="110" y="22"/>
+                        <AbsDimension x="94" y="22"/>
                     </Size>
                     <Anchors>
                         <Anchor point="LEFT">
                             <Offset>
-                                <AbsDimension x="350" y="0"/>
+                                <AbsDimension x="356" y="0"/>
                             </Offset>
                         </Anchor>
                     </Anchors>
@@ -164,7 +176,7 @@
 
             <Frame name="ProfitCraftSettingsPanel" hidden="true" enableMouse="true" toplevel="true" frameStrata="DIALOG">
                 <Size>
-                    <AbsDimension x="250" y="176"/>
+                    <AbsDimension x="250" y="236"/>
                 </Size>
                 <Anchors>
                     <Anchor point="TOPRIGHT" relativeTo="ProfitCraftDashboard">
@@ -200,7 +212,7 @@
                     </Layer>
                 </Layers>
                 <Frames>
-                    <CheckButton name="ProfitCraftSettingShowQuest" inherits="UICheckButtonTemplate">
+                    <CheckButton name="ProfitCraftSettingShowLearned" inherits="UICheckButtonTemplate">
                         <Size>
                             <AbsDimension x="24" y="24"/>
                         </Size>
@@ -208,6 +220,36 @@
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                 <Offset>
                                     <AbsDimension x="8" y="-24"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>ProfitCraft_OnSettingToggle("showLearned");</OnClick>
+                        </Scripts>
+                    </CheckButton>
+                    <CheckButton name="ProfitCraftSettingShowUnlearned" inherits="UICheckButtonTemplate">
+                        <Size>
+                            <AbsDimension x="24" y="24"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
+                                <Offset>
+                                    <AbsDimension x="8" y="-44"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>ProfitCraft_OnSettingToggle("showUnlearned");</OnClick>
+                        </Scripts>
+                    </CheckButton>
+                    <CheckButton name="ProfitCraftSettingShowQuest" inherits="UICheckButtonTemplate">
+                        <Size>
+                            <AbsDimension x="24" y="24"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
+                                <Offset>
+                                    <AbsDimension x="8" y="-64"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -222,7 +264,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                 <Offset>
-                                    <AbsDimension x="8" y="-44"/>
+                                    <AbsDimension x="8" y="-84"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -237,7 +279,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                 <Offset>
-                                    <AbsDimension x="8" y="-64"/>
+                                    <AbsDimension x="8" y="-104"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -252,12 +294,27 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                 <Offset>
-                                    <AbsDimension x="8" y="-84"/>
+                                    <AbsDimension x="8" y="-124"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
                         <Scripts>
                             <OnClick>ProfitCraft_OnSettingToggle("showDrop");</OnClick>
+                        </Scripts>
+                    </CheckButton>
+                    <CheckButton name="ProfitCraftSettingShowShoppingOnly" inherits="UICheckButtonTemplate">
+                        <Size>
+                            <AbsDimension x="24" y="24"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
+                                <Offset>
+                                    <AbsDimension x="8" y="-144"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>ProfitCraft_OnSettingToggle("showShoppingOnly");</OnClick>
                         </Scripts>
                     </CheckButton>
                     <CheckButton name="ProfitCraftSettingAutoMerchant" inherits="UICheckButtonTemplate">
@@ -267,7 +324,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                 <Offset>
-                                    <AbsDimension x="8" y="-104"/>
+                                    <AbsDimension x="8" y="-164"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -282,7 +339,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                 <Offset>
-                                    <AbsDimension x="8" y="-124"/>
+                                    <AbsDimension x="8" y="-184"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -297,7 +354,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                 <Offset>
-                                    <AbsDimension x="8" y="-144"/>
+                                    <AbsDimension x="8" y="-204"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -330,78 +387,15 @@
                             </Anchor>
                         </Anchors>
                     </Frame>
-                    <!-- Learned checkbox -->
-                    <CheckButton name="ProfitCraftFilterLearned" inherits="UICheckButtonTemplate">
-                        <Size>
-                            <AbsDimension x="24" y="24"/>
-                        </Size>
+                    <Frame name="ProfitCraftLevelRangeDropdown" inherits="UIDropDownMenuTemplate">
                         <Anchors>
-                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
+                            <Anchor point="LEFT" relativeTo="ProfitCraftProfessionDropdown" relativePoint="RIGHT">
                                 <Offset>
-                                    <AbsDimension x="156" y="-1"/>
+                                    <AbsDimension x="6" y="0"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
-                        <Scripts>
-                            <OnClick>
-                                ProfitCraft_OnFilterChanged();
-                            </OnClick>
-                        </Scripts>
-                    </CheckButton>
-                    <!-- Unlearned checkbox -->
-                    <CheckButton name="ProfitCraftFilterUnlearned" inherits="UICheckButtonTemplate">
-                        <Size>
-                            <AbsDimension x="24" y="24"/>
-                        </Size>
-                        <Anchors>
-                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
-                                <Offset>
-                                    <AbsDimension x="244" y="-1"/>
-                                </Offset>
-                            </Anchor>
-                        </Anchors>
-                        <Scripts>
-                            <OnClick>
-                                ProfitCraft_OnFilterChanged();
-                            </OnClick>
-                        </Scripts>
-                    </CheckButton>
-                    <!-- Quest checkbox -->
-                    <CheckButton name="ProfitCraftFilterQuest" inherits="UICheckButtonTemplate">
-                        <Size>
-                            <AbsDimension x="24" y="24"/>
-                        </Size>
-                        <Anchors>
-                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
-                                <Offset>
-                                    <AbsDimension x="346" y="-1"/>
-                                </Offset>
-                            </Anchor>
-                        </Anchors>
-                        <Scripts>
-                            <OnClick>
-                                ProfitCraft_OnFilterChanged();
-                            </OnClick>
-                        </Scripts>
-                    </CheckButton>
-                    <!-- Shopping-only checkbox -->
-                    <CheckButton name="ProfitCraftFilterShoppingOnly" inherits="UICheckButtonTemplate">
-                        <Size>
-                            <AbsDimension x="24" y="24"/>
-                        </Size>
-                        <Anchors>
-                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
-                                <Offset>
-                                    <AbsDimension x="424" y="-1"/>
-                                </Offset>
-                            </Anchor>
-                        </Anchors>
-                        <Scripts>
-                            <OnClick>
-                                ProfitCraft_OnFilterChanged();
-                            </OnClick>
-                        </Scripts>
-                    </CheckButton>
+                    </Frame>
                 </Frames>
             </Frame>
 
@@ -420,7 +414,7 @@
                 <Frames>
                     <Button name="ProfitCraftHeaderName">
                         <Size>
-                            <AbsDimension x="236" y="18"/>
+                            <AbsDimension x="208" y="18"/>
                         </Size>
                         <Anchors>
                             <Anchor point="LEFT">
@@ -437,12 +431,27 @@
                             <OnClick>ProfitCraft_SortBy("name");</OnClick>
                         </Scripts>
                     </Button>
-                    <Button name="ProfitCraftHeaderCost">
+                    <Button name="ProfitCraftHeaderLevel">
                         <Size>
-                            <AbsDimension x="112" y="18"/>
+                            <AbsDimension x="56" y="18"/>
                         </Size>
                         <Anchors>
                             <Anchor point="LEFT" relativeTo="ProfitCraftHeaderName" relativePoint="RIGHT"/>
+                        </Anchors>
+                        <NormalTexture file="Interface\FriendsFrame\WhoFrame-ColumnHead"/>
+                        <HighlightTexture file="Interface\PaperDollInfoFrame\UI-Character-Tab-Highlight" alphaMode="ADD"/>
+                        <NormalFont inherits="GameFontHighlightSmall"/>
+                        <NormalText text="Level"/>
+                        <Scripts>
+                            <OnClick>ProfitCraft_SortBy("level");</OnClick>
+                        </Scripts>
+                    </Button>
+                    <Button name="ProfitCraftHeaderCost">
+                        <Size>
+                            <AbsDimension x="98" y="18"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="LEFT" relativeTo="ProfitCraftHeaderLevel" relativePoint="RIGHT"/>
                         </Anchors>
                         <NormalTexture file="Interface\FriendsFrame\WhoFrame-ColumnHead"/>
                         <HighlightTexture file="Interface\PaperDollInfoFrame\UI-Character-Tab-Highlight" alphaMode="ADD"/>
@@ -454,7 +463,7 @@
                     </Button>
                     <Button name="ProfitCraftHeaderValue">
                         <Size>
-                            <AbsDimension x="112" y="18"/>
+                            <AbsDimension x="98" y="18"/>
                         </Size>
                         <Anchors>
                             <Anchor point="LEFT" relativeTo="ProfitCraftHeaderCost" relativePoint="RIGHT"/>

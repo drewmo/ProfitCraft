@@ -118,6 +118,7 @@ function ProfitCraft_GetUnlearnedRecipes(profession, currentSkill)
 
                     normalized.source = NormalizeRecipeSource(recipe.source)
                     normalized.details = ResolveSourceDetails(profession, normalized.source, recipe.details)
+                    normalized.reqSkill = tonumber(recipe.reqSkill) or tonumber(reqSkill) or 1
 
                     -- We should ideally check if the player already knows the recipe here,
                     -- but that requires comparing against the currently open TradeSkill list.
