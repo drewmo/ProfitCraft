@@ -387,15 +387,80 @@
                             </Anchor>
                         </Anchors>
                     </Frame>
-                    <Frame name="ProfitCraftLevelRangeDropdown" inherits="UIDropDownMenuTemplate">
+                    <FontString name="ProfitCraftLevelFilterLabel" inherits="GameFontNormalSmall" text="Level" justifyH="LEFT">
                         <Anchors>
                             <Anchor point="LEFT" relativeTo="ProfitCraftProfessionDropdown" relativePoint="RIGHT">
                                 <Offset>
-                                    <AbsDimension x="6" y="0"/>
+                                    <AbsDimension x="14" y="0"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
-                    </Frame>
+                    </FontString>
+                    <EditBox name="ProfitCraftLevelMinInput" inherits="InputBoxTemplate" autoFocus="false">
+                        <Size>
+                            <AbsDimension x="36" y="18"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="LEFT" relativeTo="ProfitCraftLevelFilterLabel" relativePoint="RIGHT">
+                                <Offset>
+                                    <AbsDimension x="8" y="0"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <MaxLetters>
+                            <AbsValue val="3"/>
+                        </MaxLetters>
+                        <Scripts>
+                            <OnEnterPressed>
+                                ProfitCraft_OnLevelFilterInputCommit();
+                                this:ClearFocus();
+                            </OnEnterPressed>
+                            <OnEscapePressed>
+                                this:ClearFocus();
+                                ProfitCraft_RefreshLevelFilterInputs();
+                            </OnEscapePressed>
+                            <OnEditFocusLost>
+                                ProfitCraft_OnLevelFilterInputCommit();
+                            </OnEditFocusLost>
+                        </Scripts>
+                    </EditBox>
+                    <FontString name="ProfitCraftLevelFilterDash" inherits="GameFontNormalSmall" text="-" justifyH="CENTER">
+                        <Anchors>
+                            <Anchor point="LEFT" relativeTo="ProfitCraftLevelMinInput" relativePoint="RIGHT">
+                                <Offset>
+                                    <AbsDimension x="8" y="0"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                    </FontString>
+                    <EditBox name="ProfitCraftLevelMaxInput" inherits="InputBoxTemplate" autoFocus="false">
+                        <Size>
+                            <AbsDimension x="36" y="18"/>
+                        </Size>
+                        <Anchors>
+                            <Anchor point="LEFT" relativeTo="ProfitCraftLevelFilterDash" relativePoint="RIGHT">
+                                <Offset>
+                                    <AbsDimension x="8" y="0"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <MaxLetters>
+                            <AbsValue val="3"/>
+                        </MaxLetters>
+                        <Scripts>
+                            <OnEnterPressed>
+                                ProfitCraft_OnLevelFilterInputCommit();
+                                this:ClearFocus();
+                            </OnEnterPressed>
+                            <OnEscapePressed>
+                                this:ClearFocus();
+                                ProfitCraft_RefreshLevelFilterInputs();
+                            </OnEscapePressed>
+                            <OnEditFocusLost>
+                                ProfitCraft_OnLevelFilterInputCommit();
+                            </OnEditFocusLost>
+                        </Scripts>
+                    </EditBox>
                 </Frames>
             </Frame>
 

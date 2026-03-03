@@ -20,7 +20,8 @@ ProfitCraft_Filters = {
     showDrop = true,
     showShoppingOnly = false,
     selectedProfession = "All",
-    selectedLevelRange = "ALL",
+    levelMin = nil,
+    levelMax = nil,
 }
 
 -- Multi-item shopping list: { {recipe=<data>, qty=1}, ... }
@@ -39,13 +40,7 @@ local TRACKER_TABLE_COL_SUBTOTAL_WIDTH = 120
 local PROFESSION_FILTER_ALL = "All"
 local pendingProfessionFilterDefault = nil
 local professionFilterOptions = { PROFESSION_FILTER_ALL }
-local LEVEL_RANGE_FILTERS = {
-    { id = "ALL", label = "Any Level" },
-    { id = "1_75", label = "1-75", min = 1, max = 75 },
-    { id = "76_150", label = "76-150", min = 76, max = 150 },
-    { id = "151_225", label = "151-225", min = 151, max = 225 },
-    { id = "226_300", label = "226-300", min = 226, max = 300 },
-}
+local syncingLevelFilterInputs = false
 
 local PROFESSION_SHORT_NAMES = {
     ["Alchemy"] = "Alch",
@@ -480,63 +475,72 @@ function ProfitCraft_SetProfessionFilter(professionName)
     ProfitCraft_UpdateTracker()
 end
 
-local function GetLevelRangeFilterByID(filterID)
-    if not filterID or filterID == "" then
-        filterID = "ALL"
-    end
+local function NormalizeLevelFilterValue(value)
+    if value == nil then return nil end
 
-    for _, filterData in ipairs(LEVEL_RANGE_FILTERS) do
-        if filterData.id == filterID then
-            return filterData
-        end
-    end
+    local asNumber = tonumber(value)
+    if not asNumber then return nil end
 
-    return LEVEL_RANGE_FILTERS[1]
+    local normalized = math.floor(asNumber)
+    if normalized < 0 then normalized = 0 end
+    if normalized > 999 then normalized = 999 end
+    return normalized
 end
 
-local function RefreshLevelRangeDropdown()
-    local selectedID = ProfitCraft_Filters.selectedLevelRange
-    local selectedFilter = GetLevelRangeFilterByID(selectedID)
-    ProfitCraft_Filters.selectedLevelRange = selectedFilter.id
+local function NormalizeLevelFilterPair(minValue, maxValue)
+    local minLevel = NormalizeLevelFilterValue(minValue)
+    local maxLevel = NormalizeLevelFilterValue(maxValue)
 
-    local dropdown = ProfitCraftLevelRangeDropdown
-    if not dropdown then
+    if minLevel and maxLevel and minLevel > maxLevel then
+        local swap = minLevel
+        minLevel = maxLevel
+        maxLevel = swap
+    end
+
+    return minLevel, maxLevel
+end
+
+function ProfitCraft_RefreshLevelFilterInputs()
+    local minLevel, maxLevel = NormalizeLevelFilterPair(ProfitCraft_Filters.levelMin, ProfitCraft_Filters.levelMax)
+    ProfitCraft_Filters.levelMin = minLevel
+    ProfitCraft_Filters.levelMax = maxLevel
+
+    syncingLevelFilterInputs = true
+    if ProfitCraftLevelMinInput then
+        if minLevel then
+            ProfitCraftLevelMinInput:SetText(tostring(minLevel))
+        else
+            ProfitCraftLevelMinInput:SetText("")
+        end
+    end
+    if ProfitCraftLevelMaxInput then
+        if maxLevel then
+            ProfitCraftLevelMaxInput:SetText(tostring(maxLevel))
+        else
+            ProfitCraftLevelMaxInput:SetText("")
+        end
+    end
+    syncingLevelFilterInputs = false
+end
+
+function ProfitCraft_OnLevelFilterInputCommit()
+    if syncingLevelFilterInputs then
         return
     end
 
-    if UIDropDownMenu_SetWidth then
-        UIDropDownMenu_SetWidth(112, dropdown)
+    local rawMin = nil
+    local rawMax = nil
+    if ProfitCraftLevelMinInput then
+        rawMin = TrimSearchText(ProfitCraftLevelMinInput:GetText())
     end
-    if UIDropDownMenu_SetButtonWidth then
-        UIDropDownMenu_SetButtonWidth(128, dropdown)
-    end
-    if UIDropDownMenu_JustifyText then
-        UIDropDownMenu_JustifyText("LEFT", dropdown)
-    end
-
-    if UIDropDownMenu_Initialize and UIDropDownMenu_CreateInfo and UIDropDownMenu_AddButton then
-        UIDropDownMenu_Initialize(dropdown, function()
-            for _, filterData in ipairs(LEVEL_RANGE_FILTERS) do
-                local info = UIDropDownMenu_CreateInfo()
-                info.text = filterData.label
-                info.checked = filterData.id == ProfitCraft_Filters.selectedLevelRange
-                info.func = function()
-                    ProfitCraft_SetLevelRangeFilter(filterData.id)
-                end
-                UIDropDownMenu_AddButton(info)
-            end
-        end)
+    if ProfitCraftLevelMaxInput then
+        rawMax = TrimSearchText(ProfitCraftLevelMaxInput:GetText())
     end
 
-    if UIDropDownMenu_SetText then
-        UIDropDownMenu_SetText(selectedFilter.label, dropdown)
-    end
-end
-
-function ProfitCraft_SetLevelRangeFilter(filterID)
-    local selected = GetLevelRangeFilterByID(filterID)
-    ProfitCraft_Filters.selectedLevelRange = selected.id
-    RefreshLevelRangeDropdown()
+    local minLevel, maxLevel = NormalizeLevelFilterPair(rawMin, rawMax)
+    ProfitCraft_Filters.levelMin = minLevel
+    ProfitCraft_Filters.levelMax = maxLevel
+    ProfitCraft_RefreshLevelFilterInputs()
     ProfitCraft_ApplySortAndFilter()
     ProfitCraft_DashboardUpdate()
     ProfitCraft_UpdateTracker()
@@ -915,7 +919,9 @@ function ProfitCraft_Dashboard_OnLoad(frame)
     ProfitCraft_Filters.showDrop = GetSettingValue("showDrop", true)
     ProfitCraft_Filters.showShoppingOnly = GetSettingValue("showShoppingOnly", false)
     ProfitCraft_Filters.selectedProfession = NormalizeProfessionFilterValue(ProfitCraft_Filters.selectedProfession)
-    ProfitCraft_Filters.selectedLevelRange = GetLevelRangeFilterByID(ProfitCraft_Filters.selectedLevelRange).id
+    local minLevel, maxLevel = NormalizeLevelFilterPair(ProfitCraft_Filters.levelMin, ProfitCraft_Filters.levelMax)
+    ProfitCraft_Filters.levelMin = minLevel
+    ProfitCraft_Filters.levelMax = maxLevel
 
     if ProfitCraftSettingsPanel then
         ProfitCraftSettingsPanel:Hide()
@@ -924,7 +930,7 @@ function ProfitCraft_Dashboard_OnLoad(frame)
     ConfigureStaticCheckboxLabels()
     ProfitCraft_RefreshSettingsUI()
     RefreshProfessionFilterDropdown()
-    RefreshLevelRangeDropdown()
+    ProfitCraft_RefreshLevelFilterInputs()
 
     -- Legacy top controls are replaced by the explicit detail-pane add button.
     if ProfitCraftTrackerMinus then ProfitCraftTrackerMinus:Hide() end
@@ -1139,7 +1145,7 @@ end
 
 function ProfitCraft_ApplySortAndFilter()
     RefreshProfessionFilterDropdown()
-    RefreshLevelRangeDropdown()
+    ProfitCraft_RefreshLevelFilterInputs()
     ProfitCraft_FilteredList = {}
 
     local shoppingOnlyMap = nil
@@ -1154,7 +1160,8 @@ function ProfitCraft_ApplySortAndFilter()
     end
 
     local selectedProfession = NormalizeProfessionFilterValue(ProfitCraft_Filters.selectedProfession)
-    local selectedLevelRange = GetLevelRangeFilterByID(ProfitCraft_Filters.selectedLevelRange)
+    local levelMin = NormalizeLevelFilterValue(ProfitCraft_Filters.levelMin)
+    local levelMax = NormalizeLevelFilterValue(ProfitCraft_Filters.levelMax)
 
     for _, entry in ipairs(ProfitCraft_List) do
         local dominated = true
@@ -1191,9 +1198,16 @@ function ProfitCraft_ApplySortAndFilter()
             end
         end
 
-        if dominated and selectedLevelRange and selectedLevelRange.id ~= "ALL" then
+        if dominated and levelMin then
             local recipeLevel = tonumber(entry.level) or 0
-            if recipeLevel < (selectedLevelRange.min or 0) or recipeLevel > (selectedLevelRange.max or 9999) then
+            if recipeLevel < levelMin then
+                dominated = false
+            end
+        end
+
+        if dominated and levelMax then
+            local recipeLevel = tonumber(entry.level) or 0
+            if recipeLevel > levelMax then
                 dominated = false
             end
         end
