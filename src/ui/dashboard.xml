@@ -389,21 +389,30 @@
                     </Frame>
                     <FontString name="ProfitCraftLevelFilterLabel" inherits="GameFontNormalSmall" text="Level" justifyH="LEFT">
                         <Anchors>
-                            <Anchor point="LEFT" relativeTo="ProfitCraftProfessionDropdown" relativePoint="RIGHT">
+                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftFilterBar">
                                 <Offset>
-                                    <AbsDimension x="14" y="0"/>
+                                    <AbsDimension x="214" y="-3"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                    </FontString>
+                    <FontString name="ProfitCraftLevelMinLabel" inherits="GameFontNormalSmall" text="Min" justifyH="LEFT">
+                        <Anchors>
+                            <Anchor point="LEFT" relativeTo="ProfitCraftLevelFilterLabel" relativePoint="RIGHT">
+                                <Offset>
+                                    <AbsDimension x="10" y="0"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
                     </FontString>
                     <EditBox name="ProfitCraftLevelMinInput" inherits="InputBoxTemplate" autoFocus="false">
                         <Size>
-                            <AbsDimension x="36" y="18"/>
+                            <AbsDimension x="42" y="18"/>
                         </Size>
                         <Anchors>
-                            <Anchor point="LEFT" relativeTo="ProfitCraftLevelFilterLabel" relativePoint="RIGHT">
+                            <Anchor point="LEFT" relativeTo="ProfitCraftLevelMinLabel" relativePoint="RIGHT">
                                 <Offset>
-                                    <AbsDimension x="8" y="0"/>
+                                    <AbsDimension x="4" y="0"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -422,25 +431,28 @@
                             <OnEditFocusLost>
                                 ProfitCraft_OnLevelFilterInputCommit();
                             </OnEditFocusLost>
+                            <OnLoad>
+                                this:SetJustifyH("CENTER");
+                            </OnLoad>
                         </Scripts>
                     </EditBox>
-                    <FontString name="ProfitCraftLevelFilterDash" inherits="GameFontNormalSmall" text="-" justifyH="CENTER">
+                    <FontString name="ProfitCraftLevelMaxLabel" inherits="GameFontNormalSmall" text="Max" justifyH="LEFT">
                         <Anchors>
                             <Anchor point="LEFT" relativeTo="ProfitCraftLevelMinInput" relativePoint="RIGHT">
                                 <Offset>
-                                    <AbsDimension x="8" y="0"/>
+                                    <AbsDimension x="10" y="0"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
                     </FontString>
                     <EditBox name="ProfitCraftLevelMaxInput" inherits="InputBoxTemplate" autoFocus="false">
                         <Size>
-                            <AbsDimension x="36" y="18"/>
+                            <AbsDimension x="42" y="18"/>
                         </Size>
                         <Anchors>
-                            <Anchor point="LEFT" relativeTo="ProfitCraftLevelFilterDash" relativePoint="RIGHT">
+                            <Anchor point="LEFT" relativeTo="ProfitCraftLevelMaxLabel" relativePoint="RIGHT">
                                 <Offset>
-                                    <AbsDimension x="8" y="0"/>
+                                    <AbsDimension x="4" y="0"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -459,6 +471,9 @@
                             <OnEditFocusLost>
                                 ProfitCraft_OnLevelFilterInputCommit();
                             </OnEditFocusLost>
+                            <OnLoad>
+                                this:SetJustifyH("CENTER");
+                            </OnLoad>
                         </Scripts>
                     </EditBox>
                 </Frames>
