@@ -823,15 +823,15 @@ GetAuxMarketValue = function(itemLink)
 
     -- Method 1: aux.core.history module (OldManAlpha fork — Turtle WoW standard)
     if aux_history then
-        -- .value() = weighted historical median (best for profit calculations)
-        local ok, val = pcall(aux_history.value, item_key)
-        if ok and val and val > 0 then
-            return val
-        end
         -- .market_value() = today's daily min buyout
         local ok2, val2 = pcall(aux_history.market_value, item_key)
         if ok2 and val2 and val2 > 0 then
             return val2
+        end
+        -- .value() = weighted historical median fallback
+        local ok, val = pcall(aux_history.value, item_key)
+        if ok and val and val > 0 then
+            return val
         end
     end
 
@@ -858,10 +858,10 @@ local function GetAuxValueByID(itemId)
     local item_key = tostring(itemId) .. ":0"
 
     if aux_history then
-        local ok, val = pcall(aux_history.value, item_key)
-        if ok and val and val > 0 then return val end
         local ok2, val2 = pcall(aux_history.market_value, item_key)
         if ok2 and val2 and val2 > 0 then return val2 end
+        local ok, val = pcall(aux_history.value, item_key)
+        if ok and val and val > 0 then return val end
     end
 
     if Aux and Aux.history and Aux.history.price_data then
@@ -895,10 +895,43 @@ local lastCalcTime = 0
 local CALC_THROTTLE = 1
 local lastBagRecipeCacheTime = 0
 local BAG_CACHE_THROTTLE = 1
+local AUX_PRICE_REFRESH_DELAY = 0.20
+local auxPriceRefreshFrame = CreateFrame("Frame", addonName.."AuxPriceRefreshFrame")
+local auxPriceRefreshAt = nil
+
+local function FlushQueuedAuxPriceRefresh()
+    if not auxPriceRefreshAt then
+        auxPriceRefreshFrame:SetScript("OnUpdate", nil)
+        return
+    end
+
+    local now = (GetTime and GetTime()) or auxPriceRefreshAt
+    if now < auxPriceRefreshAt then
+        return
+    end
+
+    auxPriceRefreshAt = nil
+    auxPriceRefreshFrame:SetScript("OnUpdate", nil)
+
+    if ProfitCraftDashboard and ProfitCraftDashboard:IsVisible() then
+        ProfitCraft_CalculateProfits(true)
+    end
+end
+
+local function QueueAuxPriceRefresh(delaySeconds)
+    local delay = tonumber(delaySeconds) or AUX_PRICE_REFRESH_DELAY
+    if delay < 0 then
+        delay = 0
+    end
+
+    local now = (GetTime and GetTime()) or 0
+    auxPriceRefreshAt = now + delay
+    auxPriceRefreshFrame:SetScript("OnUpdate", FlushQueuedAuxPriceRefresh)
+end
 
 frame:SetScript("OnEvent", function()
     if event == "ADDON_LOADED" and arg1 == addonName then
-        Print("v1.6.5 loaded. Open a profession window or type /pc")
+        Print("v1.6.6 loaded. Open a profession window or type /pc")
         ProfitCraft_AuctionHouseOpen = false
 
         -- Initialize Aux API
@@ -970,7 +1003,8 @@ frame:SetScript("OnEvent", function()
     elseif event == "AUCTION_ITEM_LIST_UPDATE" then
         ProfitCraft_CacheAuctionRecipeItems()
         if ProfitCraftDashboard and ProfitCraftDashboard:IsVisible() then
-            ProfitCraft_CalculateProfits(true)
+            -- Aux persists price updates after the list event; defer refresh slightly.
+            QueueAuxPriceRefresh()
         end
 
     elseif event == "TRADE_SKILL_UPDATE" then
@@ -993,6 +1027,8 @@ frame:SetScript("OnEvent", function()
         end
     elseif event == "AUCTION_HOUSE_CLOSED" then
         ProfitCraft_AuctionHouseOpen = false
+        auxPriceRefreshAt = nil
+        auxPriceRefreshFrame:SetScript("OnUpdate", nil)
         if ProfitCraftDashboard and ProfitCraftDashboard:IsVisible() and ProfitCraft_UpdateTracker then
             ProfitCraft_UpdateTracker()
         end
