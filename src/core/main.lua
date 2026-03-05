@@ -931,7 +931,7 @@ end
 
 frame:SetScript("OnEvent", function()
     if event == "ADDON_LOADED" and arg1 == addonName then
-        Print("v1.6.6 loaded. Open a profession window or type /pc")
+        Print("v1.7.0 loaded. Open a profession window or type /pc")
         ProfitCraft_AuctionHouseOpen = false
 
         -- Initialize Aux API

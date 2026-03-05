@@ -2,6 +2,127 @@
 -- Dashboard UI: sorting, filtering, multi-item shopping list.
 
 -- ============================================================================
+-- Theme System - Detects and adapts to UI addons like pfUI
+-- ============================================================================
+
+local ProfitCraft_Theme = {
+    isPfUI = false,
+    isShaguUI = false,
+    isTukui = false,
+    name = "default",
+}
+
+local function DetectUIFramework()
+    if pfUI and pfUI.version then
+        ProfitCraft_Theme.isPfUI = true
+        ProfitCraft_Theme.name = "pfUI"
+        return
+    end
+    
+    if ShaguUI and ShaguUI.version then
+        ProfitCraft_Theme.isShaguUI = true
+        ProfitCraft_Theme.name = "ShaguUI"
+        return
+    end
+    
+    if Tukui and Tukui.db and Tukui.db.profile then
+        ProfitCraft_Theme.isTukui = true
+        ProfitCraft_Theme.name = "Tukui"
+        return
+    end
+    
+    ProfitCraft_Theme.name = "default"
+end
+
+DetectUIFramework()
+
+local function ApplyThemeToButton(button, style)
+    if not button then return end
+    
+    local btnName = button:GetName() or ""
+    
+    if ProfitCraft_Theme.name == "pfUI" then
+        button:SetNormalFontObject(GameFontHighlightLeft)
+        button:SetHighlightFontObject(GameFontHighlightLeft)
+        button:SetDisabledFontObject(GameFontDisableLeft)
+    elseif ProfitCraft_Theme.name == "default" then
+        if style == "small" then
+            button:SetNormalFontObject(GameFontHighlightSmall)
+            button:SetHighlightFontObject(GameFontHighlightSmall)
+            button:SetDisabledFontObject(GameFontDisableSmall)
+        else
+            button:SetNormalFontObject(GameFontHighlight)
+            button:SetHighlightFontObject(GameFontHighlight)
+            button:SetDisabledFontObject(GameFontDisable)
+        end
+    end
+end
+
+local function GetThemeButtonTextures()
+    if ProfitCraft_Theme.name == "pfUI" then
+        return {
+            normal = "Interface\\AddOns\\pfUI\\media\\button_normal",
+            highlight = "Interface\\AddOns\\pfUI\\media\\button_highlight",
+            pressed = "Interface\\AddOns\\pfUI\\media\\button_pressed",
+            disabled = "Interface\\AddOns\\pfUI\\media\\button_disabled",
+        }
+    elseif ProfitCraft_Theme.name == "Tukui" then
+        return {
+            normal = "Interface\\AddOns\\Tukui\\media\\Textures\\ButtonNormal",
+            highlight = "Interface\\AddOns\\Tukui\\media\\Textures\\ButtonHighlight",
+            pressed = "Interface\\AddOns\\Tukui\\media\\Textures\\ButtonPressed",
+            disabled = "Interface\\AddOns\\Tukui\\media\\Textures\\ButtonDisabled",
+        }
+    end
+    
+    return nil
+end
+
+-- Theme colors
+local ThemeColors = {
+    default = {
+        headerBg = { r = 0.09, g = 0.09, b = 0.09, a = 0.95 },
+        headerBorder = { r = 0.5, g = 0.5, b = 0.5, a = 1 },
+        buttonNormal = { r = 0.4, g = 0.4, b = 0.4 },
+        buttonHighlight = { r = 0.5, g = 0.5, b = 0.5 },
+        columnHeader = { r = 0.25, g = 0.22, b = 0.18 },
+        columnHeaderHighlight = { r = 0.35, g = 0.32, b = 0.28 },
+        separator = { r = 0.3, g = 0.3, b = 0.3, a = 0.6 },
+        rowAlternate = { r = 0.08, g = 0.08, b = 0.08 },
+    },
+    pfUI = {
+        headerBg = { r = 0.1, g = 0.1, b = 0.1, a = 0.98 },
+        headerBorder = { r = 0.3, g = 0.3, b = 0.3, a = 1 },
+        buttonNormal = { r = 0.15, g = 0.15, b = 0.15 },
+        buttonHighlight = { r = 0.25, g = 0.25, b = 0.25 },
+        columnHeader = { r = 0.12, g = 0.12, b = 0.12 },
+        columnHeaderHighlight = { r = 0.2, g = 0.2, b = 0.2 },
+        separator = { r = 0.2, g = 0.2, b = 0.2, a = 0.8 },
+        rowAlternate = { r = 0.05, g = 0.05, b = 0.05 },
+    },
+    Tukui = {
+        headerBg = { r = 0.15, g = 0.15, b = 0.15, a = 0.98 },
+        headerBorder = { r = 0.25, g = 0.25, b = 0.25, a = 1 },
+        buttonNormal = { r = 0.2, g = 0.2, b = 0.2 },
+        buttonHighlight = { r = 0.3, g = 0.3, b = 0.3 },
+        columnHeader = { r = 0.15, g = 0.15, b = 0.15 },
+        columnHeaderHighlight = { r = 0.25, g = 0.25, b = 0.25 },
+        separator = { r = 0.2, g = 0.2, b = 0.2, a = 0.8 },
+        rowAlternate = { r = 0.08, g = 0.08, b = 0.08 },
+    },
+}
+
+local function GetThemeColorSet()
+    local themeName = ProfitCraft_Theme.name
+    if themeName == "pfUI" then
+        return ThemeColors.pfUI
+    elseif themeName == "Tukui" or themeName == "ShaguUI" then
+        return ThemeColors.Tukui
+    end
+    return ThemeColors.default
+end
+
+-- ============================================================================
 -- State
 -- ============================================================================
 
@@ -672,7 +793,7 @@ local function SetCheckboxLabel(frameName, labelText, width)
 
     text:SetText(labelText or "")
     text:ClearAllPoints()
-    text:SetPoint("LEFT", checkbox, "RIGHT", 2, 0)
+    text:SetPoint("LEFT", checkbox, "RIGHT", 4, 0)
     text:SetJustifyH("LEFT")
     if width then
         text:SetWidth(width)
@@ -680,16 +801,16 @@ local function SetCheckboxLabel(frameName, labelText, width)
 end
 
 local function ConfigureStaticCheckboxLabels()
-    SetCheckboxLabel("ProfitCraftSettingShowLearned", "Show Learned", 200)
-    SetCheckboxLabel("ProfitCraftSettingShowUnlearned", "Show Unlearned", 200)
-    SetCheckboxLabel("ProfitCraftSettingShowQuest", "Show Quest Unlearned", 200)
-    SetCheckboxLabel("ProfitCraftSettingShowTrainer", "Show Trainer Unlearned", 200)
-    SetCheckboxLabel("ProfitCraftSettingShowVendor", "Show Vendor Unlearned", 200)
-    SetCheckboxLabel("ProfitCraftSettingShowDrop", "Show Drop Unlearned", 200)
-    SetCheckboxLabel("ProfitCraftSettingShowShoppingOnly", "Shopping List View", 200)
-    SetCheckboxLabel("ProfitCraftSettingAutoMerchant", "Open at Vendors", 200)
-    SetCheckboxLabel("ProfitCraftSettingAutoAuction", "Open at Auction House", 200)
-    SetCheckboxLabel("ProfitCraftSettingAutoShoppingOnly", "Use Shopping-Only on Auto Open", 210)
+    SetCheckboxLabel("ProfitCraftSettingShowLearned", "Show Learned Recipes", 220)
+    SetCheckboxLabel("ProfitCraftSettingShowUnlearned", "Show Unlearned Recipes", 220)
+    SetCheckboxLabel("ProfitCraftSettingShowQuest", "Show: Quest Recipes", 220)
+    SetCheckboxLabel("ProfitCraftSettingShowTrainer", "Show: Trainer Recipes", 220)
+    SetCheckboxLabel("ProfitCraftSettingShowVendor", "Show: Vendor Recipes", 220)
+    SetCheckboxLabel("ProfitCraftSettingShowDrop", "Show: Drop Recipes", 220)
+    SetCheckboxLabel("ProfitCraftSettingShowShoppingOnly", "Shopping List Only", 220)
+    SetCheckboxLabel("ProfitCraftSettingAutoMerchant", "Auto-Open at Merchant", 220)
+    SetCheckboxLabel("ProfitCraftSettingAutoAuction", "Auto-Open at Auction House", 220)
+    SetCheckboxLabel("ProfitCraftSettingAutoShoppingOnly", "Auto-Open: Shopping List View", 220)
 end
 
 local function EnsureSettingsPanelOnTop()
@@ -704,9 +825,10 @@ local function EnsureSettingsPanelOnTop()
     ProfitCraftSettingsPanel:SetFrameLevel(baseLevel)
     ProfitCraftSettingsPanel:EnableMouse(true)
 
+    local colors = GetThemeColorSet()
     if ProfitCraftSettingsPanel.SetBackdropColor then
-        ProfitCraftSettingsPanel:SetBackdropColor(0.06, 0.06, 0.06, 0.92)
-        ProfitCraftSettingsPanel:SetBackdropBorderColor(0.75, 0.75, 0.75, 1.0)
+        ProfitCraftSettingsPanel:SetBackdropColor(colors.headerBg.r, colors.headerBg.g, colors.headerBg.b, colors.headerBg.a)
+        ProfitCraftSettingsPanel:SetBackdropBorderColor(colors.headerBorder.r, colors.headerBorder.g, colors.headerBorder.b, colors.headerBorder.a)
     end
 
     local checkboxes = {
@@ -893,6 +1015,74 @@ local function ApplyDashboardModeLayout()
 end
 
 -- ============================================================================
+-- Theme Application
+-- ============================================================================
+
+function ProfitCraft_ApplyThemeStyling()
+    local colors = GetThemeColorSet()
+    
+    local headerButtons = {
+        "ProfitCraftHeaderName",
+        "ProfitCraftHeaderLevel", 
+        "ProfitCraftHeaderCost",
+        "ProfitCraftHeaderValue",
+        "ProfitCraftHeaderProfit",
+    }
+    
+    for _, headerName in ipairs(headerButtons) do
+        local header = getglobal(headerName)
+        if header then
+            local bgTex = getglobal(headerName .. "Background")
+            if bgTex then
+                bgTex:SetVertexColor(colors.columnHeader.r, colors.columnHeader.g, colors.columnHeader.b, 1)
+            end
+        end
+    end
+    
+    local separator = ProfitCraftSeparator
+    if separator then
+        local sepTex = separator:CreateTexture(nil, "ARTWORK")
+        sepTex:SetAllPoints(separator)
+        sepTex:SetVertexColor(colors.separator.r, colors.separator.g, colors.separator.b, colors.separator.a)
+    end
+    
+    local trackerButtons = {
+        "ProfitCraftTrackerAddButton",
+        "ProfitCraftTrackerRemoveButton", 
+        "ProfitCraftTrackerSearchItemButton",
+    }
+    
+    for _, btnName in ipairs(trackerButtons) do
+        local btn = getglobal(btnName)
+        if btn then
+            ApplyThemeToButton(btn, "small")
+        end
+    end
+    
+    local settingsBtn = ProfitCraftSettingsToggle
+    if settingsBtn then
+        ApplyThemeToButton(settingsBtn, "small")
+        local btnBg = getglobal("ProfitCraftSettingsToggleBackground")
+        if btnBg then
+            btnBg:SetVertexColor(colors.columnHeader.r, colors.columnHeader.g, colors.columnHeader.b, 1)
+        end
+    end
+    
+    if ProfitCraftDashboard then
+        local bd = ProfitCraftDashboard:GetBackdrop()
+        if bd then
+            ProfitCraftDashboard:SetBackdropColor(colors.headerBg.r, colors.headerBg.g, colors.headerBg.b, colors.headerBg.a)
+            ProfitCraftDashboard:SetBackdropBorderColor(colors.headerBorder.r, colors.headerBorder.g, colors.headerBorder.b, colors.headerBorder.a)
+        end
+    end
+    
+    if ProfitCraftSettingsPanel then
+        ProfitCraftSettingsPanel:SetBackdropColor(colors.headerBg.r, colors.headerBg.g, colors.headerBg.b, colors.headerBg.a)
+        ProfitCraftSettingsPanel:SetBackdropBorderColor(colors.headerBorder.r, colors.headerBorder.g, colors.headerBorder.b, colors.headerBorder.a)
+    end
+end
+
+-- ============================================================================
 -- Dashboard OnLoad
 -- ============================================================================
 
@@ -1059,6 +1249,8 @@ function ProfitCraft_Dashboard_OnLoad(frame)
     ApplyDashboardModeLayout()
     RefreshDetailActionButtons()
     ProfitCraft_UpdateTracker()
+    
+    ProfitCraft_ApplyThemeStyling()
 end
 
 -- ============================================================================
@@ -1601,17 +1793,17 @@ function ProfitCraft_UpdateTracker()
                 if reagentCount == 0 then
                     table.insert(rows, {
                         type = "reagent",
-                        text = "  |cFF888888No reagent data|r",
+                        text = "|cFF888888No reagent data|r",
                     })
                 else
                     table.insert(rows, {
                         type = "tableHeader",
                         useTableCols = true,
-                        text = "  |cFFCCCCCCReagent|r",
-                        colHave = "|cFFCCCCCCHave|r",
-                        colQty = "|cFFCCCCCCCraft Qty|r",
-                        colUnit = "|cFFCCCCCCUnit|r",
-                        colSubtotal = "|cFFCCCCCCSubtotal|r",
+                        text = "|cFFAAAAAAReagent|r",
+                        colHave = "|cFFAAAAAAHave|r",
+                        colQty = "|cFFAAAAAACraft|r",
+                        colUnit = "|cFFAAAAAAUnit|r",
+                        colSubtotal = "|cFFAAAAAASubtotal|r",
                     })
 
                     local recipeTotal = 0
@@ -1632,7 +1824,7 @@ function ProfitCraft_UpdateTracker()
                         table.insert(rows, {
                             type = "reagent",
                             useTableCols = true,
-                            text = "  " .. (reagent.name or "Unknown"),
+                            text = (reagent.name or "Unknown"),
                             colHave = color .. have .. "|r",
                             colQty = "|cFFFFFFFF" .. need .. "|r",
                             colUnit = ProfitCraft_FormatCurrencyNeutral(unitCost),
@@ -1645,7 +1837,7 @@ function ProfitCraft_UpdateTracker()
                     table.insert(rows, {
                         type = "tableTotal",
                         useTableCols = true,
-                        text = "  |cFFFFFFCCRecipe Total|r",
+                        text = "|cFFFFFFCCRecipe Total|r",
                         colSubtotal = ProfitCraft_FormatCurrencyNeutral(recipeTotal),
                     })
                 end
@@ -1659,7 +1851,7 @@ function ProfitCraft_UpdateTracker()
             table.insert(rows, {
                 type = "tableTotal",
                 useTableCols = true,
-                text = "|cFFFFFFCCShopping Total|r",
+                text = "|cFFFFD100Shopping Total|r",
                 colSubtotal = ProfitCraft_FormatCurrencyNeutral(shoppingGrandTotal),
             })
         end
@@ -1692,41 +1884,38 @@ function ProfitCraft_UpdateTracker()
                 text = "|cFFFFD100" .. (selected.name or "Unknown Recipe") .. "|r" .. professionSuffix,
                 searchName = GetRecipeSearchName(selected),
             })
+            
+            local recipeLevel = tonumber(selected.level) or 0
+            local levelText = "---"
+            if recipeLevel > 0 then
+                levelText = tostring(recipeLevel)
+            end
             table.insert(rows, {
                 type = "meta",
-                text = "  |cFFAAAAAAStatus:|r " .. learnedText
-                    .. "  |cFFAAAAAAIn List:|r " .. selectedQty,
+                text = "|cFF888888Level:|r " .. levelText .. "   |cFF888888Status:|r " .. learnedText .. "   |cFF888888In List:|r " .. selectedQty,
             })
             table.insert(rows, {
                 type = "meta",
-                text = "  |cFFAAAAAAMarket Value:|r " .. ProfitCraft_FormatCurrencyNeutral(selected.marketValue),
-            })
-            table.insert(rows, {
-                type = "meta",
-                text = "  |cFFAAAAAACraft Cost:|r " .. ProfitCraft_FormatCurrencyNeutral(selected.cost),
-            })
-            table.insert(rows, {
-                type = "meta",
-                text = "  |cFFAAAAAAProfit:|r " .. ProfitCraft_FormatCurrency(selected.profit),
+                text = "|cFF888888Market:|r " .. ProfitCraft_FormatCurrencyNeutral(selected.marketValue) .. "   |cFF888888Cost:|r " .. ProfitCraft_FormatCurrencyNeutral(selected.cost) .. "   |cFF888888Profit:|r " .. ProfitCraft_FormatCurrency(selected.profit),
             })
 
             if selected.source and selected.source ~= "" then
                 table.insert(rows, {
                     type = "meta",
-                    text = "  |cFFAAAAAASource:|r " .. selected.source,
+                    text = "|cFF888888Source:|r " .. selected.source,
                 })
             end
 
             if selected.sourceDetails and selected.sourceDetails ~= "" then
                 table.insert(rows, {
                     type = "meta",
-                    text = "  |cFFAAAAAADetails:|r " .. selected.sourceDetails,
+                    text = "|cFF888888Details:|r " .. selected.sourceDetails,
                 })
             end
 
             table.insert(rows, {
                 type = "header",
-                text = "|cFFFFFFCCReagents|r",
+                text = "|cFFFFD100Reagents|r",
             })
 
             local reagentCount = 0
@@ -1737,17 +1926,17 @@ function ProfitCraft_UpdateTracker()
             if reagentCount == 0 then
                 table.insert(rows, {
                     type = "reagent",
-                    text = "  |cFF888888No reagent data|r",
+                    text = "|cFF888888No reagent data|r",
                 })
             else
                 table.insert(rows, {
                     type = "tableHeader",
                     useTableCols = true,
-                    text = "  |cFFCCCCCCReagent|r",
-                    colHave = "|cFFCCCCCCHave|r",
-                    colQty = "|cFFCCCCCCCraft Qty|r",
-                    colUnit = "|cFFCCCCCCUnit|r",
-                    colSubtotal = "|cFFCCCCCCSubtotal|r",
+                    text = "|cFFAAAAAAReagent|r",
+                    colHave = "|cFFAAAAAAHave|r",
+                    colQty = "|cFFAAAAAACraft|r",
+                    colUnit = "|cFFAAAAAAUnit|r",
+                    colSubtotal = "|cFFAAAAAASubtotal|r",
                 })
 
                 local recipeTotal = 0
@@ -1768,7 +1957,7 @@ function ProfitCraft_UpdateTracker()
                     table.insert(rows, {
                         type = "reagent",
                         useTableCols = true,
-                        text = "  " .. (reagent.name or "Unknown"),
+                        text = (reagent.name or "Unknown"),
                         colHave = color .. have .. "|r",
                         colQty = "|cFFFFFFFF" .. need .. "|r",
                         colUnit = ProfitCraft_FormatCurrencyNeutral(unitCost),
@@ -1780,7 +1969,7 @@ function ProfitCraft_UpdateTracker()
                 table.insert(rows, {
                     type = "tableTotal",
                     useTableCols = true,
-                    text = "  |cFFFFFFCCReagent Total|r",
+                    text = "|cFFFFD100Reagent Total|r",
                     colSubtotal = ProfitCraft_FormatCurrencyNeutral(recipeTotal),
                 })
             end

@@ -156,7 +156,7 @@
 
             <Button name="ProfitCraftSettingsToggle">
                 <Size>
-                    <AbsDimension x="92" y="18"/>
+                    <AbsDimension x="80" y="22"/>
                 </Size>
                 <Anchors>
                     <Anchor point="TOPRIGHT" relativeTo="ProfitCraftDashboard">
@@ -165,10 +165,30 @@
                         </Offset>
                     </Anchor>
                 </Anchors>
-                <NormalTexture file="Interface\FriendsFrame\WhoFrame-ColumnHead"/>
-                <HighlightTexture file="Interface\PaperDollInfoFrame\UI-Character-Tab-Highlight" alphaMode="ADD"/>
+                <Layers>
+                    <Layer level="BACKGROUND">
+                        <Texture name="$parentBackground">
+                            <Size>
+                                <AbsDimension x="80" y="22"/>
+                            </Size>
+                            <Anchors>
+                                <Anchor point="TOPLEFT"/>
+                            </Anchors>
+                            <Color r="0.25" g="0.22" b="0.18" a="1"/>
+                        </Texture>
+                    </Layer>
+                </Layers>
+                <HighlightTexture file="Interface\Buttons\UI-Button-Highlight" alphaMode="ADD"/>
                 <NormalFont inherits="GameFontHighlightSmall"/>
-                <NormalText text="Settings"/>
+                <NormalText text="Settings">
+                    <Anchors>
+                        <Anchor point="CENTER">
+                            <Offset>
+                                <AbsDimension x="0" y="0"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </NormalText>
                 <Scripts>
                     <OnClick>ProfitCraft_ToggleSettings();</OnClick>
                 </Scripts>
@@ -176,7 +196,7 @@
 
             <Frame name="ProfitCraftSettingsPanel" hidden="true" enableMouse="true" toplevel="true" frameStrata="DIALOG">
                 <Size>
-                    <AbsDimension x="250" y="236"/>
+                    <AbsDimension x="280" y="310"/>
                 </Size>
                 <Anchors>
                     <Anchor point="TOPRIGHT" relativeTo="ProfitCraftDashboard">
@@ -185,26 +205,24 @@
                         </Offset>
                     </Anchor>
                 </Anchors>
-                <Backdrop bgFile="Interface\Tooltips\UI-Tooltip-Background" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+                <Backdrop bgFile="Interface\DialogFrame\UI-DialogBox-Background" edgeFile="Interface\DialogFrame\UI-DialogBox-Border" tile="true">
                     <BackgroundInsets>
-                        <AbsInset left="3" right="3" top="3" bottom="3"/>
+                        <AbsInset left="11" right="12" top="12" bottom="11"/>
                     </BackgroundInsets>
                     <TileSize>
-                        <AbsValue val="16"/>
+                        <AbsValue val="32"/>
                     </TileSize>
                     <EdgeSize>
-                        <AbsValue val="12"/>
+                        <AbsValue val="32"/>
                     </EdgeSize>
-                    <BackdropColor r="0.06" g="0.06" b="0.06" a="0.92"/>
-                    <BackdropBorderColor r="0.75" g="0.75" b="0.75" a="1.0"/>
                 </Backdrop>
                 <Layers>
-                    <Layer level="OVERLAY">
-                        <FontString name="ProfitCraftSettingsTitle" inherits="GameFontNormalSmall" text="Settings" justifyH="LEFT">
+                    <Layer level="ARTWORK">
+                        <FontString name="ProfitCraftSettingsTitle" inherits="GameFontNormal" text="Settings" justifyH="LEFT">
                             <Anchors>
                                 <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                     <Offset>
-                                        <AbsDimension x="10" y="-10"/>
+                                        <AbsDimension x="16" y="-16"/>
                                     </Offset>
                                 </Anchor>
                             </Anchors>
@@ -219,7 +237,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                 <Offset>
-                                    <AbsDimension x="8" y="-24"/>
+                                    <AbsDimension x="12" y="-40"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -234,7 +252,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                 <Offset>
-                                    <AbsDimension x="8" y="-44"/>
+                                    <AbsDimension x="12" y="-62"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -249,7 +267,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                 <Offset>
-                                    <AbsDimension x="8" y="-64"/>
+                                    <AbsDimension x="12" y="-84"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -264,7 +282,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                 <Offset>
-                                    <AbsDimension x="8" y="-84"/>
+                                    <AbsDimension x="12" y="-106"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -279,7 +297,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                 <Offset>
-                                    <AbsDimension x="8" y="-104"/>
+                                    <AbsDimension x="12" y="-128"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -294,7 +312,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                 <Offset>
-                                    <AbsDimension x="8" y="-124"/>
+                                    <AbsDimension x="12" y="-150"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -309,7 +327,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                 <Offset>
-                                    <AbsDimension x="8" y="-144"/>
+                                    <AbsDimension x="12" y="-172"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -317,6 +335,16 @@
                             <OnClick>ProfitCraft_OnSettingToggle("showShoppingOnly");</OnClick>
                         </Scripts>
                     </CheckButton>
+                    <FontString name="ProfitCraftSettingsDivider1" inherits="GameFontNormalSmall" text="Auto-Open" justifyH="LEFT">
+                        <Anchors>
+                            <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
+                                <Offset>
+                                    <AbsDimension x="12" y="-196"/>
+                                </Offset>
+                            </Anchor>
+                            <Color r="0.6" g="0.6" b="0.6"/>
+                        </Anchors>
+                    </FontString>
                     <CheckButton name="ProfitCraftSettingAutoMerchant" inherits="UICheckButtonTemplate">
                         <Size>
                             <AbsDimension x="24" y="24"/>
@@ -324,7 +352,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                 <Offset>
-                                    <AbsDimension x="8" y="-164"/>
+                                    <AbsDimension x="12" y="-218"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -339,7 +367,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                 <Offset>
-                                    <AbsDimension x="8" y="-184"/>
+                                    <AbsDimension x="12" y="-240"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -354,7 +382,7 @@
                         <Anchors>
                             <Anchor point="TOPLEFT" relativeTo="ProfitCraftSettingsPanel">
                                 <Offset>
-                                    <AbsDimension x="8" y="-204"/>
+                                    <AbsDimension x="12" y="-262"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
@@ -362,6 +390,18 @@
                             <OnClick>ProfitCraft_OnSettingToggle("autoOpenShoppingOnly");</OnClick>
                         </Scripts>
                     </CheckButton>
+                    <Button name="$parentCloseButton" inherits="UIPanelCloseButton">
+                        <Anchors>
+                            <Anchor point="TOPRIGHT">
+                                <Offset>
+                                    <AbsDimension x="-3" y="-3"/>
+                                </Offset>
+                            </Anchor>
+                        </Anchors>
+                        <Scripts>
+                            <OnClick>ProfitCraft_ToggleSettings();</OnClick>
+                        </Scripts>
+                    </Button>
                 </Frames>
             </Frame>
 
@@ -494,7 +534,7 @@
                 <Frames>
                     <Button name="ProfitCraftHeaderName">
                         <Size>
-                            <AbsDimension x="208" y="18"/>
+                            <AbsDimension x="208" y="20"/>
                         </Size>
                         <Anchors>
                             <Anchor point="LEFT">
@@ -503,70 +543,170 @@
                                 </Offset>
                             </Anchor>
                         </Anchors>
-                        <NormalTexture file="Interface\FriendsFrame\WhoFrame-ColumnHead"/>
-                        <HighlightTexture file="Interface\PaperDollInfoFrame\UI-Character-Tab-Highlight" alphaMode="ADD"/>
+                        <Layers>
+                            <Layer level="BACKGROUND">
+                                <Texture name="$parentBackground">
+                                    <Size>
+                                        <AbsDimension x="208" y="20"/>
+                                    </Size>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT"/>
+                                    </Anchors>
+                                    <Color r="0.25" g="0.22" b="0.18" a="1"/>
+                                </Texture>
+                            </Layer>
+                        </Layers>
+                        <HighlightTexture file="Interface\Buttons\UI-Button-Highlight" alphaMode="ADD"/>
                         <NormalFont inherits="GameFontHighlightSmall"/>
-                        <NormalText text="  Recipe Name"/>
+                        <NormalText text="  Recipe Name" justifyH="LEFT">
+                            <Anchors>
+                                <Anchor point="LEFT">
+                                    <Offset>
+                                        <AbsDimension x="4" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </NormalText>
                         <Scripts>
                             <OnClick>ProfitCraft_SortBy("name");</OnClick>
                         </Scripts>
                     </Button>
                     <Button name="ProfitCraftHeaderLevel">
                         <Size>
-                            <AbsDimension x="56" y="18"/>
+                            <AbsDimension x="56" y="20"/>
                         </Size>
                         <Anchors>
                             <Anchor point="LEFT" relativeTo="ProfitCraftHeaderName" relativePoint="RIGHT"/>
                         </Anchors>
-                        <NormalTexture file="Interface\FriendsFrame\WhoFrame-ColumnHead"/>
-                        <HighlightTexture file="Interface\PaperDollInfoFrame\UI-Character-Tab-Highlight" alphaMode="ADD"/>
+                        <Layers>
+                            <Layer level="BACKGROUND">
+                                <Texture name="$parentBackground">
+                                    <Size>
+                                        <AbsDimension x="56" y="20"/>
+                                    </Size>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT"/>
+                                    </Anchors>
+                                    <Color r="0.25" g="0.22" b="0.18" a="1"/>
+                                </Texture>
+                            </Layer>
+                        </Layers>
+                        <HighlightTexture file="Interface\Buttons\UI-Button-Highlight" alphaMode="ADD"/>
                         <NormalFont inherits="GameFontHighlightSmall"/>
-                        <NormalText text="Level"/>
+                        <NormalText text="Level" justifyH="CENTER">
+                            <Anchors>
+                                <Anchor point="CENTER">
+                                    <Offset>
+                                        <AbsDimension x="0" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </NormalText>
                         <Scripts>
                             <OnClick>ProfitCraft_SortBy("level");</OnClick>
                         </Scripts>
                     </Button>
                     <Button name="ProfitCraftHeaderCost">
                         <Size>
-                            <AbsDimension x="98" y="18"/>
+                            <AbsDimension x="98" y="20"/>
                         </Size>
                         <Anchors>
                             <Anchor point="LEFT" relativeTo="ProfitCraftHeaderLevel" relativePoint="RIGHT"/>
                         </Anchors>
-                        <NormalTexture file="Interface\FriendsFrame\WhoFrame-ColumnHead"/>
-                        <HighlightTexture file="Interface\PaperDollInfoFrame\UI-Character-Tab-Highlight" alphaMode="ADD"/>
+                        <Layers>
+                            <Layer level="BACKGROUND">
+                                <Texture name="$parentBackground">
+                                    <Size>
+                                        <AbsDimension x="98" y="20"/>
+                                    </Size>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT"/>
+                                    </Anchors>
+                                    <Color r="0.25" g="0.22" b="0.18" a="1"/>
+                                </Texture>
+                            </Layer>
+                        </Layers>
+                        <HighlightTexture file="Interface\Buttons\UI-Button-Highlight" alphaMode="ADD"/>
                         <NormalFont inherits="GameFontHighlightSmall"/>
-                        <NormalText text="Craft Cost"/>
+                        <NormalText text="Craft Cost" justifyH="RIGHT">
+                            <Anchors>
+                                <Anchor point="RIGHT">
+                                    <Offset>
+                                        <AbsDimension x="-4" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </NormalText>
                         <Scripts>
                             <OnClick>ProfitCraft_SortBy("cost");</OnClick>
                         </Scripts>
                     </Button>
                     <Button name="ProfitCraftHeaderValue">
                         <Size>
-                            <AbsDimension x="98" y="18"/>
+                            <AbsDimension x="98" y="20"/>
                         </Size>
                         <Anchors>
                             <Anchor point="LEFT" relativeTo="ProfitCraftHeaderCost" relativePoint="RIGHT"/>
                         </Anchors>
-                        <NormalTexture file="Interface\FriendsFrame\WhoFrame-ColumnHead"/>
-                        <HighlightTexture file="Interface\PaperDollInfoFrame\UI-Character-Tab-Highlight" alphaMode="ADD"/>
+                        <Layers>
+                            <Layer level="BACKGROUND">
+                                <Texture name="$parentBackground">
+                                    <Size>
+                                        <AbsDimension x="98" y="20"/>
+                                    </Size>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT"/>
+                                    </Anchors>
+                                    <Color r="0.25" g="0.22" b="0.18" a="1"/>
+                                </Texture>
+                            </Layer>
+                        </Layers>
+                        <HighlightTexture file="Interface\Buttons\UI-Button-Highlight" alphaMode="ADD"/>
                         <NormalFont inherits="GameFontHighlightSmall"/>
-                        <NormalText text="Market Value"/>
+                        <NormalText text="Market Value" justifyH="RIGHT">
+                            <Anchors>
+                                <Anchor point="RIGHT">
+                                    <Offset>
+                                        <AbsDimension x="-4" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </NormalText>
                         <Scripts>
                             <OnClick>ProfitCraft_SortBy("marketValue");</OnClick>
                         </Scripts>
                     </Button>
                     <Button name="ProfitCraftHeaderProfit">
                         <Size>
-                            <AbsDimension x="92" y="18"/>
+                            <AbsDimension x="92" y="20"/>
                         </Size>
                         <Anchors>
                             <Anchor point="LEFT" relativeTo="ProfitCraftHeaderValue" relativePoint="RIGHT"/>
                         </Anchors>
-                        <NormalTexture file="Interface\FriendsFrame\WhoFrame-ColumnHead"/>
-                        <HighlightTexture file="Interface\PaperDollInfoFrame\UI-Character-Tab-Highlight" alphaMode="ADD"/>
+                        <Layers>
+                            <Layer level="BACKGROUND">
+                                <Texture name="$parentBackground">
+                                    <Size>
+                                        <AbsDimension x="92" y="20"/>
+                                    </Size>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT"/>
+                                    </Anchors>
+                                    <Color r="0.25" g="0.22" b="0.18" a="1"/>
+                                </Texture>
+                            </Layer>
+                        </Layers>
+                        <HighlightTexture file="Interface\Buttons\UI-Button-Highlight" alphaMode="ADD"/>
                         <NormalFont inherits="GameFontHighlightSmall"/>
-                        <NormalText text="Profit"/>
+                        <NormalText text="Profit" justifyH="RIGHT">
+                            <Anchors>
+                                <Anchor point="RIGHT">
+                                    <Offset>
+                                        <AbsDimension x="-4" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </NormalText>
                         <Scripts>
                             <OnClick>ProfitCraft_SortBy("profit");</OnClick>
                         </Scripts>
@@ -608,7 +748,7 @@
                 <Layers>
                     <Layer level="ARTWORK">
                         <Texture>
-                            <Color r="0.5" g="0.5" b="0.5" a="0.6"/>
+                            <Color r="0.35" g="0.33" b="0.3" a="0.8"/>
                         </Texture>
                     </Layer>
                 </Layers>
@@ -642,22 +782,25 @@
                 <Frames>
                     <Button name="ProfitCraftTrackerAddButton" inherits="UIPanelButtonTemplate" text="Add">
                         <Size>
-                            <AbsDimension x="78" y="20"/>
+                            <AbsDimension x="80" y="22"/>
                         </Size>
                         <Anchors>
                             <Anchor point="TOPRIGHT" relativeTo="ProfitCraftTracker">
                                 <Offset>
-                                    <AbsDimension x="-6" y="2"/>
+                                    <AbsDimension x="-6" y="-2"/>
                                 </Offset>
                             </Anchor>
                         </Anchors>
+                        <NormalFont inherits="GameFontHighlightSmall"/>
+                        <HighlightFont inherits="GameFontHighlightSmall"/>
+                        <DisabledFont inherits="GameFontDisableSmall"/>
                         <Scripts>
                             <OnClick>ProfitCraft_AddSelectedRecipeToShoppingList();</OnClick>
                         </Scripts>
                     </Button>
                     <Button name="ProfitCraftTrackerRemoveButton" inherits="UIPanelButtonTemplate" text="Remove">
                         <Size>
-                            <AbsDimension x="78" y="20"/>
+                            <AbsDimension x="80" y="22"/>
                         </Size>
                         <Anchors>
                             <Anchor point="RIGHT" relativeTo="ProfitCraftTrackerAddButton" relativePoint="LEFT">
@@ -666,13 +809,16 @@
                                 </Offset>
                             </Anchor>
                         </Anchors>
+                        <NormalFont inherits="GameFontHighlightSmall"/>
+                        <HighlightFont inherits="GameFontHighlightSmall"/>
+                        <DisabledFont inherits="GameFontDisableSmall"/>
                         <Scripts>
                             <OnClick>ProfitCraft_RemoveSelectedRecipeFromShoppingList();</OnClick>
                         </Scripts>
                     </Button>
-                    <Button name="ProfitCraftTrackerSearchItemButton" inherits="UIPanelButtonTemplate" text="AH Item">
+                    <Button name="ProfitCraftTrackerSearchItemButton" inherits="UIPanelButtonTemplate" text="Search">
                         <Size>
-                            <AbsDimension x="72" y="20"/>
+                            <AbsDimension x="70" y="22"/>
                         </Size>
                         <Anchors>
                             <Anchor point="RIGHT" relativeTo="ProfitCraftTrackerRemoveButton" relativePoint="LEFT">
@@ -681,6 +827,9 @@
                                 </Offset>
                             </Anchor>
                         </Anchors>
+                        <NormalFont inherits="GameFontHighlightSmall"/>
+                        <HighlightFont inherits="GameFontHighlightSmall"/>
+                        <DisabledFont inherits="GameFontDisableSmall"/>
                         <Scripts>
                             <OnClick>ProfitCraft_SearchSelectedRecipeInAux();</OnClick>
                         </Scripts>
