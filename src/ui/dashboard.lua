@@ -273,8 +273,8 @@ local function TrySearchViaSlash(query)
     for _, handlerName in ipairs(slashHandlers) do
         local handler = SlashCmdList[handlerName]
         if type(handler) == "function" then
-            local ok = pcall(handler, query)
-            if ok then
+            local ok, result = pcall(handler, query)
+            if ok and result then
                 return true
             end
         end
@@ -283,24 +283,55 @@ local function TrySearchViaSlash(query)
     return false
 end
 
+local aux_search_tab = nil
+local function GetAuxSearchTab()
+    if aux_search_tab then return aux_search_tab end
+    if not require then return nil end
+    local ok, mod = pcall(require, 'aux.tabs.search')
+    if ok and mod then
+        aux_search_tab = mod
+        return mod
+    end
+    return nil
+end
+
 local function TrySearchViaAuxNamespaces(query)
-    if not Aux then
+    local filter = query .. "/exact"
+    
+    local search_tab = GetAuxSearchTab()
+    if search_tab then
+        pcall(search_tab.set_filter, filter)
+        local ok, err = pcall(search_tab.execute, nil, false)
+        if ok then return true end
+    end
+
+    local auxGlobal = Aux or aux
+    if not auxGlobal then
         return false
     end
 
-    if Aux.search and type(Aux.search.search) == "function" then
-        local ok = pcall(Aux.search.search, query)
-        if ok then return true end
+    if auxGlobal.frame and auxGlobal.frame.filter and auxGlobal.frame.filter.editbox then
+        local editbox = auxGlobal.frame.filter.editbox
+        if editbox and editbox.SetText then
+            editbox:SetText(filter)
+            editbox:GetParent():SetFocus()
+            local start_button = auxGlobal.frame.start_button
+            if start_button and start_button.Click then
+                start_button:Click()
+                return true
+            end
+        end
     end
 
-    if Aux.search and type(Aux.search) == "function" then
-        local ok = pcall(Aux.search, query)
-        if ok then return true end
-    end
-
-    if Aux.cmd and type(Aux.cmd.search) == "function" then
-        local ok = pcall(Aux.cmd.search, query)
-        if ok then return true end
+    if auxGlobal.get_tab and type(auxGlobal.get_tab) == "function" then
+        local tab = auxGlobal.get_tab()
+        if tab and tab.CLICK_LINK then
+            local item_info = {}
+            item_info.name = query
+            item_info.item_id = 0
+            local ok = pcall(tab.CLICK_LINK, item_info)
+            if ok then return true end
+        end
     end
 
     return false
@@ -311,7 +342,15 @@ local function TrySearchViaAuctionQuery(query)
         return false
     end
 
-    local ok = pcall(QueryAuctionItems, query, nil, nil, 0, false, nil, nil, nil, nil, nil)
+    if CanSendAuctionQuery and not CanSendAuctionQuery("list") then
+        return false
+    end
+
+    if BrowseName and BrowseName.SetText then
+        BrowseName:SetText(query)
+    end
+
+    local ok = pcall(QueryAuctionItems, query, nil, nil, 0, false, nil, nil, nil)
     return ok and true or false
 end
 
@@ -320,6 +359,8 @@ local function ProfitCraft_TryAuxSearchByName(itemName)
     if not query then
         return false
     end
+
+    query = string.lower(query)
 
     if ProfitCraft_EnsureAuxPricing then
         ProfitCraft_EnsureAuxPricing()
@@ -1638,9 +1679,7 @@ function ProfitCraft_SearchInAuxByName(itemName)
     end
 
     local ok = ProfitCraft_TryAuxSearchByName(query)
-    if ok then
-        PrintDashboardMessage("Searching: " .. query)
-    else
+    if not ok then
         PrintDashboardMessage("Unable to send search request to Aux for: " .. query)
     end
 end
